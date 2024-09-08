@@ -1,0 +1,409 @@
+---
+title: "Machine Learning and Predictive Inference [HEART DISEASE]"
+author: "Lumumba Wandera Victor"
+date: "2023-06-15"
+output:
+  html_document:
+    toc: yes
+  pdf_document:
+    toc: yes
+  word_document:
+    toc: yes
+---
+
+## Set up Rstudio
+Setting up RMarkdown when opening it enables you to create dynamic, reproducible, and visually appealing reports, presentations, and documents, that can help you communicate your data analysis and research findings more effectively.
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE,comment = NA, message=FALSE,
+                      fig.height=4, fig.width=6)
+```
+
+## Executive Summary
+In this report, we analyzed United States Centers of Disease Control and Prevention (CDC) “Heart Disease” 2020 annual survey data in order to find key indicators of heart disease and do predictions. Other interesting applications we explored include causal analysis of related diseases, which helps the detection of secondary condition.
+
+The original dataset consists of 319,795 respondents and 18 variables. We first performed the explanatory variable analysis (EDA) to see if any variables that were worth paying more attention to. The variables were divided into categorical ones (14 variables) and numerical ones (4 variables), on which we conducted univariate and bivariate analysis with our response variable HeartDisease. We thus reached the following insights (more details will be displayed in each section):
+
+* The dataset is quite unbalanced with only 8.56% of the observations having heart disease.
+* Among inveterate smokers, older people, and those with history of certain diseases (stroke, difficulty of walking, diabetic, kidney disease, skin cancer), the percentage of people who have heart disease is likely to be significantly higher.
+* Intuitively, based on the definition of variables, we may have multicollinearity issue. While, as the largest value from the correlation matrix is below 0.5, we would use PCA and Lasso for further investigation.
+
+In the data cleaning and pre-processing step, we decided to use the under-sampling method to address the issue of unbalanced data, which could avoid poor models leaning towards the prediction of “No Heart Disease” and reduce the size of the dataset as the original one with 320k rows took forever long to run. Eventually, we end up having about 55k observations (17% of the original data). 50% of them are the ones with heart disease and the rest 50% do not have heart disease. With the new dataset, we built models on our training set (80% of the data), and compared their out-of-sample performance.
+
+*For the inference part* we applied 2 parametric models and 6 nonparametric models. Here, PCA analysis and Lasso did not suggest significant dimension reduction. Recursive Feature Elimination (RFE) and Genetic Algorithm (GA) were also applied for feature selection. In general, it turned out that Age, Stroke, Diabetic, and self-reported GenHealth are key indicators of heart disease.
+
+*For the secondary disease detection*, our two-stage Lasso showed that stroke and kidney disease have significant causal effects on heart disease. More specifically, if a respondent was diagnosed with stroke, his/her odds of having heart disease was expected to be multiplied by 2.94, keeping everything else unchanged. Then doctors can give precautionary advice and medications, so that the risks of getting heart disease can be mitigated.
+
+*For the prediction performance*, after running all the models, we selected one or several optimal models by comparing their prediction accuracy rates, false positive rates and false negative rates. Specifically, we first selected those with the highest accuracy rates, then compared their false negative rates. We put more emphasize on false negative rate since we prefer to diagnose as many subjects who actually have heart disease as possible and give them subsequent treatment. This requires the model to have the lowest possible false negative rate. Also, we will consider the computational complexity of the model. The size of the analyzed dataset can be used to decide whether to use a model with higher computational load but better prediction performance.
+
+*In conclusion*, following the models comparison, we finally chose logistic regression as the optimal model. It has both high accuracy rate and low false negative rate. Moreover, the computational complexity of logistic regression is low, so it is a feasible method even when dealing with data that has a large number of observations.
+
+## Introduction
+### Background
+Heart disease has been the leading cause of death in the United States for most racial and ethnic groups since the last century (CDC). It is reported that, each year in the US, approximately 1 in every 4 deaths is from heart diseases (Virani SS, 2021). Heart disease is multi-factorial. Risk factors include modifiable ones like cigarette smoking, alcohol consumption, physical inactivity, and ones that cannot be modified like age, gender, and heredity. In 2019, there was half of all Americans (47%) had at least one of the three key factors of heart disease: high blood pressure, high cholesterol level, and smoking (Fryar CD, 2012), and the percentage was still mounting. In addition to societal healthcare burdens, the direct medical cost and loss of productivity it causes are enormous. Many researches dedicate their efforts to study heart disease, one of the most prevalent and costly killers.
+
+### Dataset
+The dataset for this project is the “Personal Key Indicators of Heart Disease” on Kaggle, which consists of 319,795 respondents and 18 variables. It was originally derived from CDC dataset released in February 2022 by discarding some irrelevant variables. The dataset is also a major part of the Behavioral Risk Factor Surveillance System (BRFSS), the world’s largest continuously conducted health survey system. The 18 variables (9 Booleans, 5 strings and 4 decimals) record the answers from respondents regarding their basic information, living habits and health conditions, which may have potential relationships with heart disease. Please refer to Appendix I for column descriptions.
+
+### Goal/Question of Interest
+In this project, we mainly treated heart disease as the response variable, then did both inference and prediction. More specifically, we wondered
+
+* Which factor have a significant effect on the likelihood of heart disease? (Inference)
+* For a new person, can we predict his/her risk of heart disease? Is the prediction powerful? (Prediction)
+
+Other interests or potential applications include how other diseases, e.g., kidney disease, skin cancer, affect heart disease? Can we detect any pattern of secondary condition or syndrome between them, then take actions beforehand?
+
+EDA
+Variable Description:
+* HeartDisease: Respondents that have ever reported having coronary heart disease (CHD) or myocardial infarction (MI).
+*  BMI: Body Mass Index (BMI).
+* Smoking: Have you smoked at least 100 cigarettes in your entire life?
+* AlcoholDrinking: Heavy drinkers (adult men having more than 14 drinks per week and adult women having more than 7 drinks per week) or not?
+* Stroke: (Ever told) (you had) a stroke?
+* PhysicalHealth: Now thinking about your physical health, which includes physical illness and injury, for how many days during the past 30 days was your physical health not good? (0-30 days).
+* MentalHealth: Thinking about your mental health, for how many days during the past 30 days was your mental health not good? (0-30 days).
+* DiffWalking: Do you have serious difficulty walking or climbing stairs?
+* Sex: Are you male or female?
+* AgeCategory: Fourteen-level age category.
+* Race: Imputed race/ethnicity value.
+* Diabetic: (Ever told) (you had) diabetes?
+* PhysicalActivity: Adults who reported doing physical activity or exercise during the past 30 days other than their regular job.
+* GenHealth: Would you say that in general your health is… (General Health Status)
+* SleepTime: On average, how many hours of sleep do you get in a 24-hour period?
+* Asthma: (Ever told) (you had) asthma?
+* KidneyDisease: Not including kidney stones, bladder infection or incontinence, were you ever told you had kidney disease?
+* SkinCancer: (Ever told) (you had) skin cancer?
+
+## Visualization
+### Column Statistics of Categorical Data
+*a) Data with two levels* 
+
+```{r}
+
+library(ggplot2)
+library(ggpubr)
+library(cowplot)
+library(plyr)
+library(stringr)
+library(gridExtra)
+library(RColorBrewer)
+library(psych)
+library(tree)
+
+data = read.csv("heart_2020_cleaned.csv")
+head(data,5)
+
+```
+
+### Check the structure of the dataset
+```{r}
+str(data)
+```
+
+### Attach the dataset
+```{r}
+attach(data)
+```
+
+### Encode the variables
+```{r}
+data$HeartDisease <- ifelse(data$HeartDisease == 1, "yes", "no")
+data$Smoking <- ifelse(data$Smoking == 1, "yes", "no")
+data$AlcoholDrinking <- ifelse(data$AlcoholDrinking == 1, "yes", "no")
+data$Stroke <- ifelse(data$Stroke == 1, "yes", "no")
+data$DiffWalking <- ifelse(data$DiffWalking == 1, "yes", "no")
+data$Diabetic <- ifelse(data$Diabetic == 1, "yes", "no")
+data$PhysicalActivity <- ifelse(data$PhysicalActivity == 1, "yes", "no")
+data$Asthma <- ifelse(data$Asthma == 1, "yes", "no")
+data$KidneyDisease <- ifelse(data$KidneyDisease == 1, "yes", "no")
+data$SkinCancer <- ifelse(data$SkinCancer == 1, "yes", "no")
+```
+
+
+*a) Data with more than two levels*
+```{r}
+par(mfrow = c(1, 2))
+category_sex <- prop.table(table(data$Sex))
+pie_colors <- rainbow(length(category_sex))
+p1<-pie(category_sex, labels = paste(names(category_sex), "(", round(category_sex * 100, 1), "%)"), main = "Pie Chart [Male and Female]", col = pie_colors)
+legend_x <- "bottomleft"  # Adjust the position as needed
+legend_width <- 0.05     # Adjust the width as needed
+
+legend(legend_x, legend = names(category_sex), fill = (pie_colors), 
+       inset = c(0, -legend_width), title = "Sex Categories")
+
+age_category <- prop.table(table(data$AgeCategory))
+pie_colors1 <- rainbow(length(age_category))
+p2<-pie(age_category, labels = paste(names(age_category), "(", round(age_category * 100, 1), "%)"), main = "Pie Chart for age Category")
+
+```
+
+
+```{r}
+par(mfrow = c(1,1))
+race_category <- prop.table(table(data$Race))
+p1<-pie(race_category, labels = paste(names(race_category), "(", round(race_category * 100, 1), "%)"), main = "Pie Chart for Race Category")
+
+gen_health <- prop.table(table(data$GenHealth))
+p2<-pie(gen_health, labels = paste(names(gen_health), "(", round(gen_health * 100, 1), "%)"), main = "Pie Chart for GenHealth")
+```
+
+*b) Data with two levels*
+```{r}
+par(mfrow = c(1,2))
+heart_disease <- prop.table(table(data$HeartDisease))
+p1<-pie(heart_disease, labels = paste(names(heart_disease), "(", round(heart_disease * 100, 1), "%)"), main = "Pie Chart for Heart Disease")
+
+smoking_category <- prop.table(table(data$Smoking))
+p2<-pie(smoking_category, labels = paste(names(smoking_category), "(", round(smoking_category * 100, 1), "%)"), main = "Pie Chart for Smoking Category")
+```
+
+```{r}
+par(mfrow = c(1,2))
+alcohol <- prop.table(table(data$AlcoholDrinking))
+p1<-pie(alcohol, labels = paste(names(alcohol), "(", round(alcohol * 100, 1), "%)"), main = "Pie Chart for Alcohol Drinking")
+
+stroke_category <- prop.table(table(data$Stroke))
+p2<-pie(stroke_category, labels = paste(names(stroke_category), "(", round(stroke_category * 100, 1), "%)"), main = "Pie Chart for Stroke Category")
+```
+
+### Exploratory Analysis 
+```{r}
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+
+ggplot(data=data, aes(GenHealth))+
+  geom_bar(aes(fill=as.factor(HeartDisease), y = (..count..)/sum(..count..)), position=position_stack(vjust = 0.5))+
+  scale_y_continuous(labels=scales::percent)
+```
+
+### Alternatively
+```{r}
+library(ggplot2)
+ggplot(data, aes(x=as.factor(GenHealth), fill=as.factor(HeartDisease)))+
+  geom_bar(aes( y=..count../tapply(..count.., ..x.. ,sum)[..x..]), position="dodge" ) +
+  geom_text(aes( y=..count../tapply(..count.., ..x.. ,sum)[..x..], label=scales::percent(..count../tapply(..count.., ..x.. ,sum)[..x..]) ),
+            stat="count", position=position_dodge(0.9), vjust=-0.5)+
+  ylab("Percentage of HeartDisease Across General Health Condition") +
+  xlab("Genral Health")+
+  labs(title = "Bar Graph Showing the Distribution of Heart Disease For Various General Health Conditions")
+  scale_y_continuous(labels = scales::percent)
+```
+
+
+### Alternatively
+```{r}
+library(ggplot2)
+ggplot(data, aes(x=as.factor(GenHealth), fill=as.factor(HeartDisease)))+
+  geom_bar(aes( y=..count../tapply(..count.., ..x.. ,sum)[..x..]), position=position_stack(vjust = 0.5)) +
+  geom_text(aes( y=..count../tapply(..count.., ..x.. ,sum)[..x..], label=scales::percent(..count../tapply(..count.., ..x.. ,sum)[..x..]) ),
+            stat="count", position=position_dodge(0.9), vjust=-0.5)+
+  ylab("Percentage of HeartDisease Across General Health Condition") +
+  xlab("Genral Health")+
+  labs(title = "Bar Graph Showing the Distribution of Heart Disease For Various General Health Conditions")
+  scale_y_continuous(labels = scales::percent)
+```
+
+### Summary Table of the Results Above
+```{r}
+library(gtsummary)
+data [,c(1,14)] %>%
+  tbl_summary(by = GenHealth) %>%
+  add_p() %>%
+  add_overall() %>% 
+  bold_labels()
+```
+
+### Factor the variables and get ther Summaries
+
+```{r}
+data[,c(1,2, 3, 4)] %>% tbl_summary()
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

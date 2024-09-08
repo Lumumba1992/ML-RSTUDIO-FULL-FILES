@@ -1,0 +1,155 @@
+---
+title: "Generating Malaria Data with Three Variants"
+author: "Lumumba Wandera Victor"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = NA, message = FALSE,
+                      fig.height = 6, fig.width = 7)
+```
+
+### Load the Data
+```{r}
+library(caret) #for machine learning models
+library(psych) ##for description of  data
+library(ggplot2) ##for data visualization
+library(caretEnsemble)##enables the creation of ensemble models
+library(tidyverse) ##for data manipulation
+library(mlbench)  ## for benchmarking ML Models
+library(flextable) ## to create and style tables
+library(mltools) #for hyperparameter tuning
+library(tictoc) #for determining the time taken for a model to run
+library(ROSE)  ## for random oversampling
+library(smotefamily) ## for smote sampling
+library(ROCR) ##For ROC curve
+```
+
+```{r}
+data <- read.csv("Simulated_Malaria_Variants_Data.csv")
+head(data,5)
+```
+
+### Convert the Character Variables to Factors
+```{r}
+numeric_cols <- sapply(data, is.character)
+data[, numeric_cols] <- lapply(data[, numeric_cols], as.factor)
+```
+
+```{r}
+library(sjmisc)
+frq(data, Malaria_Variant)
+```
+
+### Dimension of the Data
+```{r}
+dim(data)
+```
+
+### View the Variable Names
+```{r}
+names(data)
+```
+### Explore the data
+```{r}
+attach(data)
+summary(data) ###Descriptive Statistics
+describe(data)###Descriptive Statistics
+sum(is.na(data))###Check for missing data
+```
+
+### Bag Graph of the Predicted variable
+```{r, fig.height=5, fig.width=7}
+Obj <- data %>%
+  group_by(Malaria_Variant)%>%
+  summarize(Percentage = n()/nrow(data)*100)
+
+ggplot(Obj, aes(x= Malaria_Variant, y = Percentage, fill= Malaria_Variant))+
+  geom_bar(stat = "identity")+
+  geom_text(aes(label = sprintf("%.1f%%",Percentage)),vjust=-0.2)+
+  labs(title = "",
+       x ="Malaria Variants",
+       y="Percent")+
+   theme(axis.text.x = element_text(angle = 0, vjust = 0.5))+
+  ggtitle("Malaria Variants")
+```
+
+
+### DATA PARTITION FOR MACHINE LEARNING
+```{r}
+set.seed(123)
+ind=sample(2, nrow(data),replace =T, prob=c(0.70,0.30))
+train=data[ind==1,]
+test= data[ind==2,]
+```
+
+## Get the dimensions of your train and test data
+```{r}
+dim(train)
+dim(test)
+```
+
+Now Let's train some machine learning models using package caret. The caret R package (Kuhn et al. 2021) (short for Classification And REgression Training) to carry out machine learning tasks in RStudio. The caret package offers a range of tools and models for classification and regression machine learning problems. In fact, it offers over 200 different machine learning models from which to choose.  Don’t worry, we don’t expect you to use them all!
+
+### VIEW THE MODELS IN CARET
+```{r}
+models= getModelInfo()
+names(models)
+```
+
+### Check for zero variance predictors:
+```{r}
+nzv <- nearZeroVar(data[,-1], saveMetrics = TRUE)
+```
+
+```{r}
+print(nzv)
+```
+
+The results above show that there is no feature with zero variance
+## Remove nzv
+```{r}
+#mdata1 <- mdata[, !nzv$nzv]
+#dim(mdata1)
+```
+
+```{r}
+missing_values <- colSums(is.na(train))
+missing_values
+```
+
+
+
+### Prepare training scheme for cross-validation
+```{r}
+control <- trainControl(method="repeatedcv", number=10, repeats=5)
+```
+
+###TRAIN YOUR ML MODELS
+# Train a SVM model
+```{r}
+set.seed(123)
+tic()
+SvmModel <- train(Malaria_Variant~.,data=train, method="svmRadial", trControl=control, na.action = na.omit)
+toc()
+SvmModel
+```
+
+```{r}
+Svmpred= predict(SvmModel,newdata = test)
+SVM.cM<- confusionMatrix(Svmpred,
+                        reference = test$Malaria_Variant, positive = 'Plasmodium malariae', mode='everything')
+SVM.cM
+```
+
+
+
+
+
+
+
+
+
+
+

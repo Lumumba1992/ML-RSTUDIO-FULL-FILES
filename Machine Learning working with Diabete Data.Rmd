@@ -1,0 +1,525 @@
+---
+title: "Machine Learning working with Diabetes Data"
+author: "Lumumba Wandera Victor"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = NA, warning = FALSE, message = FALSE, 
+                      fig.height = 5, fig.width = 8)
+```
+
+## CLASSIFICATION
+### Classification Based on Similarities with k-Nearest Neighbors (k-NN)
+Now that we’ve covered some basic machine learning terminology, and your tidyverse skills are developing, let’s finally start learning some practical machine learning skills. The rest of the book is split into four parts:
+*Classification*
+*Regression*
+*Dimension reduction*
+*Clustering*
+
+This is probably the most important chapter of the entire book. In it, I’m going to show you how the k-nearest neighbors (kNN) algorithm works, and we’re going to use it to classify potential diabetes patients. In addition, I’m going to use the kNN algorithm to teach you some essential concepts in machine learning that we will rely on for the rest of the book. By the end of this chapter, not only will you understand and be able to use the kNN algorithm to make classification models, but you will be able to validate its performance and tune it to improve its performance as much as possible. Once the model is built, you’ll learn how to pass new, unseen data into it and get the data’s predicted classes (the value of the categorical or grouping variable we are trying to predict)
+
+### The k-Nearest Neighbours
+Imagine that you work for a reptile conservation project aiming to count the numbers of grass snakes, adders, and slow worms in a woodland. Your job is to build a model that allows you to quickly classify reptiles you find into one of these three classes. When you find one of these animals, you only have enough time to rapidly estimate its length and some measure of how aggressive it is toward you, before it slithers away (funding is very scarce for your project). A reptile expert helps you manually classify the observations you’ve made so far, but you decide to build a kNN classifier to help you quickly classify future specimens you come across.
+
+We can describe the kNN algorithm (and other machine learning algorithms) in terms of two phases:
+*1 The training phase*
+*2 The prediction phase*
+
+### Building your First k-NN Model
+Imagine that you work in a hospital and are trying to improve the diagnosis of patients with diabetes. You collect diagnostic data over a few months from suspected diabetes patients and record whether they were diagnosed as healthy, chemically diabetic, or overtly diabetic. You would like to use the kNN algorithm to train a model that can predict which of these classes a new patient will belong to, so that diagnoses can be improved. This is a three-class classification problem.
+
+### Load the following important libraries
+```{r}
+library(mlr)
+library(tidyverse)
+```
+
+### Loading and exploring the diabetes dataset
+Now, let’s load some data built into the mclust package, convert it into a tibble, and explore it a little (recall from chapter 2 that a tibble is the tidyverse way of storing rectangular data): see listing 3.1. We have a tibble with 145 cases and 4 variables. The class factor shows that 76 of the cases were non-diabetic (Normal), 36 were chemically diabetic (Chemical), and 33 were overtly diabetic (Overt). The other three variables are continuous measures of the level of blood glucose and insulin after a glucose
+tolerance test (glucose and insulin, respectively), and the steady-state level of blood glucose (sspg).
+```{r}
+
+diabetesTib <- read_csv("Diabetes.csv")
+diabetesTib <- diabetesTib %>%
+  mutate(across(where(is.character), as.factor))
+head(diabetesTib)
+```
+
+```{r}
+diabetesTib <- diabetesTib %>%
+  mutate(across(where(is.factor), as.numeric))
+
+diabetesTib$diabetes <- factor(diabetesTib$diabetes, levels = c(0,1),
+                               labels = c("No", "Yes"))
+```
+
+### View the first few observations
+```{r}
+head(diabetesTib,5)
+str(diabetesTib)
+```
+
+To show how these variables are related, they are plotted against each other in figure 3.5. The code to generate these plots is in listing 3.2.
+```{r}
+ggplot(diabetesTib, aes(age, bmi, col = diabetes)) +
+  geom_point() +
+  theme_bw()
+
+ggplot(diabetesTib, aes(HbA1c_level, blood_glucose_level, col = diabetes)) +
+  geom_point() +
+  theme_bw()
+
+ggplot(diabetesTib, aes(age, blood_glucose_level, col = diabetes)) +
+  geom_point() +
+  theme_bw()
+```
+
+Looking at the data, we can see there are differences in the continuous variables among the three classes, so let’s build a kNN classifier that we can use to predict diabetes status from measurements of future patients.
+
+Our dataset only consists of continuous predictor variables, but often we may be working with categorical predictor variables too. The kNN algorithm can’t handle categorical variables natively; they need to first be encoded somehow, or distance metrics other than Euclidean distance must be used. It’s also very important for kNN (and many machine learning algorithms) to scale the predictor variables by dividing them by their standard deviation. This preserves the relationships between the variables, but ensures that variables measured on larger scales aren’t given more importance by the algorithm. In the current example, if we divided the glucose and insulin variables by 1,000,000, then predictions would rely mostly on the value of the sspg variable. We don’t need to scale the predictors ourselves because, by default, the kNN algorithm wrapped by the mlr package does this for us.
+
+We understand the problem we’re trying to solve (classifying new patients into one of three classes), and now we need to train the kNN algorithm to build a model that will solve that problem. Building a machine learning model with the mlr package has three main stages:
+
+*1 Define the task.* The task consists of the data and what we want to do with it. In this case, the data is diabetesTib, and we want to classify the data with the class variable as the target variable.
+
+*2 Define the learner.* The learner is simply the name of the algorithm we plan to use, along with any additional arguments the algorithm accepts.
+
+*3 Train the model.* This stage is what it sounds like: you pass the task to the learner, and the learner generates a model that you can use to make future predictions.
+
+##### TIP 
+This may seem unnecessarily cumbersome, but splitting the task, learner, and model into different stages is very useful. It means we can define a single task and apply multiple learners to it, or define a single learner and test it with multiple different tasks.
+
+### Telling mlr what we’re trying to achieve: Defining the task
+Let’s begin by defining our task. The components needed to define a task are
+
+1. The data containing the predictor variables (variables we hope contain the information needed to make predictions/solve our problem)
+2. The target variable we want to predict
+
+For supervised learning, the target variable will be categorical if we have a classification problem, and continuous if we have a regression problem. For unsupervised learning, we omit the target variable from our task definition, as we don’t have access to labeled data.
+
+We want to build a classification model, so we use the makeClassifTask() function to define a classification task. When we build regression and clustering models in parts 3 and 5 of the book, we’ll use makeRegrTask() and makeClusterTask(), respectively. We supply the name of our tibble as the data argument and the name of the factor that contains the class labels as the target argument:
+
+#### NOTE 
+You may notice a warning message from mlr when you build the task, stating that your data is not a pure data.frame (it’s a tibble). This isn’t a problem, because the function will convert the tibble into a data.frame for you.
+```{r}
+diabetesTask <- makeClassifTask(data = diabetesTib, target = "diabetes")
+diabetesTask
+```
+
+Next, let’s define our learner. The components needed to define a learner are as follows:
+* The class of algorithm we are using:
+ "classif." for classification
+ "regr." for regression
+ "cluster." for clustering
+ "surv." and "multilabel." for predicting survival and multilabel classification, which I won’t discuss
+
+* The algorithm we are using
+* Any additional options we may wish to use to control the algorithm
+
+As you’ll see, the first and second components are combined together in a single character argument to define which algorithm will be used (for example, "classif.knn").
+
+We use the makeLearner() function to define a learner. The first argument to the makeLearner() function is the algorithm that we’re going to use to train our model. In this case, we want to use the kNN algorithm, so we supply "classif.knn" as the argument. See how this is the class ("classif.) joined to the name (knn") of the algorithm?
+The argument par.vals stands for parameter values, which allows us to specify the number of k-nearest neighbors we want the algorithm to use. For now, we’ll just set this to 2, but we’ll discuss how to choose k soon:
+
+```{r}
+knn <- makeLearner("classif.knn", par.vals = list("k" = 2))
+```
+
+### Putting it all together: Training the model
+Now that we’ve defined our task and our learner, we can now train our model. The components needed to train a model are the learner and task we defined earlier.
+
+This is achieved with the train() function, which takes the learner as the first argument and the task as its second argument:
+
+```{r}
+knnModel <- train(knn, diabetesTask)
+knnModel$task.desc
+```
+
+We have our model, so let’s pass the data through it to see how it performs. The predict() function takes unlabeled data and passes it through the model to get the predicted classes. The first argument is the model, and the data being passed to it is given as the newdata argument:
+
+```{r}
+knnPred <- predict(knnModel, newdata = diabetesTib)
+knnPred
+```
+
+We can pass these predictions as the first argument of the performance() function. This function compares the classes predicted by the model to the true classes, and returns performance metrics of how well the predicted and true values match each other.
+
+We specify which performance metrics we want the function to return by supplying them as a list to the measures argument. The two measures I’ve asked for are mmce, the mean misclassification error; and acc, or accuracy. MMCE is simply the proportion of cases classified as a class other than their true class. Accuracy is the opposite of this: the proportion of cases that were correctly classified by the model. You can see that the two sum to 1.00:
+
+```{r}
+performance(knnPred, measures = list(mmce, acc))
+```
+
+So our model is correctly classifying 94.48% of cases! Does this mean it will perform well on new, unseen patients? The truth is that we don’t know. Evaluating model performance by asking it to make predictions on data you used to train it in the first place tells you very little about how the model will perform when making predictions on completely unseen data. Therefore, you should never evaluate model performance
+this way. Before we discuss why, I want to introduce an important concept called the bias-variance trade-off.
+
+## Balancing two sources of model error:
+### The bias-variance trade-off
+This is a problem resulting from over-fitting or under-fitting our model. Underfitting and overfitting both introduce error and reduce the generalizability of the model: the ability of the model to generalize to future, unseen data. They are also opposed to each other: somewhere between a model that underfits and has bias, and a model that overfits and has variance, is an optimal model that balances the biasvariance
+trade-off. 
+
+### Using cross-validation to tell if we’re overfitting or underfitting
+This process is called cross-validation (CV), and it is an extremely important approach in any supervised machine learning pipeline. Once we have cross-validated our model and are happy with its performance, we then use all the data we have (including the data in the test set) to train the final model (because typically, the more data we train our model with, the less bias it will have).
+
+##### There are three common cross-validation approaches:
+* Holdout cross-validation
+* K-fold cross-validation
+* Leave-one-out cross-validation
+
+### Cross-validating our kNN model
+Let’s start by reminding ourselves of the task and learner we created earlier:
+
+```{r}
+diabetesTask <- makeClassifTask(data = diabetesTib, target = "diabetes")
+knn <- makeLearner("classif.knn", par.vals = list("k" = 2))
+```
+
+
+Before we train the final model on all the data, let’s cross-validate the learner. Ordinarily, you would decide on a CV strategy most appropriate for your data; but for the purposes of demonstration, I’m going to show you holdout, k-fold, and leave-oneout CV.
+
+### Holdout cross-validation
+When following this approach, you need to decide what proportion of the data to use as the test set. The larger the test set is, the smaller your training set will be. Here’s the confusing part: performance estimation by CV is also subject to error and the biasvariance trade-off. If your test set is too small, then the estimate of performance is going to have high variance; but if the training set is too small, then the estimate of performance is going to have high bias. A commonly used split is to use two-thirds of the data for training and the remaining one-third as a test set, but this depends on the number of cases in the data, among other things.
+
+###### MAKING A HOLDOUT RESAMPLING DESCRIPTION
+The first step when employing any CV in mlr is to make a resampling description, which is simply a set of instructions for how the data will be split into test and training sets. The first argument to the makeResampleDesc() function is the CV method we’re going to use: in this case, "Holdout". For holdout CV, we need to tell the function what proportion of the data will be used as the training set, so we supply this to the split argument:
+
+```{r}
+holdout <- makeResampleDesc(method = "Holdout", split = 2/3,
+                            stratify = TRUE)
+```
+
+#### PERFORMING HOLDOUT CV
+Now that we’ve defined how we’re going to cross-validate our learner, we can run the CV using the resample() function. We supply the learner and task that we created, and the resampling method we defined a moment ago, to the resample() function. We also ask it to give us measures of MMCE and accuracy:
+
+```{r}
+holdoutCV <- resample(learner = knn, task = diabetesTask,
+                      resampling = holdout, measures = list(mmce, acc))
+```
+
+###### Extract the aggr component 
+```{r}
+holdoutCV$aggr
+```
+
+##### You’ll notice two things:
+*The accuracy of the model as estimated by holdout cross-validation is less than when we evaluated its performance on the data we used to train the full model. This exemplifies my point earlier that models will perform better on the data that trained them than on unseen data.*
+
+*Your performance metrics will probably be different than mine. In fact, run the resample() function over and over again, and you’ll get a very different result each time! The reason for this variance is that the data is randomly split into the test and training sets. Sometimes the split is such that the model performs well on the test set; sometimes the split is such that it performs poorly.*
+
+#### Calculate the Confusion Matrix
+To get a better idea of which groups are being correctly classified and which are being misclassified, we can construct a confusion matrix. A confusion matrix is simply a tabular representation of the true and predicted class of each case in the test set.
+```{r}
+calculateConfusionMatrix(holdoutCV$pred, relative = TRUE)
+```
+
+The absolute confusion matrix is easier to interpret. The rows show the true class labels, and the columns show the predicted labels. The numbers represent the number of cases in every combination of true class and predicted class. For example, in this matrix, 8 patients were correctly classified as chemically diabetic, but four were erroneously classified as healthy. Correctly classified patients are found on the diagonal of the matrix (where true class == predicted class).
+
+From the relative confusion matrix for example, in this matrix, 67% of chemically diabetic patients were
+correctly classified, while 33% were misclassified as healthy. 
+
+Confusion matrices help us understand which classes our model classifies well and which ones it does worse at classifying. For example, based on this confusion matrix, it looks like our model struggles to distinguish healthy patients from chemically diabetic ones.
+
+### K-fold cross-validation
+In k-fold CV, we randomly split the data into approximately equal-sized chunks called folds. Then we reserve one of the folds as a test set and use the remaining data as the training set (just like in holdout). We pass the test set through the model and make a record of the relevant performance metrics. Now, we use a different fold of the data as our test set and do the same thing. We continue until all the folds have been used once as the test set. We then get an average of the performance metric as an estimate
+of model performance.
+
+This approach will typically give a more accurate estimate of model performance because every case appears in the test set once, and we are averaging the estimates over many runs. But we can improve this a little by using repeated k-fold CV, where, after the previous procedure, we shuffle the data around and perform it again.
+
+#### PERFORMING K-FOLD CV
+We perform k-fold CV in the same way as holdout. This time, when we make our resampling description, we tell it we’re going to use repeated k-fold cross-validation ("RepCV"), and we tell it how many folds we want to split the data into. The default number of folds is 10, which is often a good choice, but I want to show you how you can explicitly control the splits. Next, we tell the function that we want to repeat the 10-fold CV 50 times with the reps argument. This gives us 500 performance measures to average across! Again, we ask for the classes to be stratified among the folds:
+
+```{r}
+kFold <- makeResampleDesc(method = "RepCV", folds = 10, reps = 50,
+                          stratify = TRUE)
+kFoldCV <- resample(learner = knn, task = diabetesTask,
+                    resampling = kFold, measures = list(mmce, acc))
+```
+
+#### Extract the aggr components
+```{r}
+kFoldCV$aggr
+```
+
+The model correctly classified 89.8% of cases on average slightly higher than when we predicted the data we used to train the model! Rerun the resample() function a few times, and compare the average accuracy after each run. The estimate is much more stable than when we repeated holdout CV.
+
+We’re usually only interested in the average performance measures, but you can access the performance measure from every iteration by running
+
+```{r}
+kFoldCV$measures.test
+```
+
+### CHOOSING THE NUMBER OF REPEATS
+Your goal when cross-validating a model is to get as accurate and stable an estimate of model performance as possible. Broadly speaking, the more repeats you can do, the more accurate and stable these estimates will become. At some point, though, having more repeats won’t improve the accuracy or stability of the performance estimate. So how do you decide how many repeats to perform? A sound approach is to choose a number of repeats that is computationally reasonable, run the process a few times, and see if the average performance estimate varies a lot. If not, great. If it does vary a lot, you should increase the number of repeats.
+
+### Confusion Matrix
+Now, let’s build the confusion matrix based on the repeated k-fold CV:
+
+```{r}
+calculateConfusionMatrix(kFoldCV$pred, relative = TRUE)
+```
+
+## Leave-one-out cross-validation
+Leave-one-out CV can be thought of as the extreme of k-fold CV: instead of breaking the data into folds, we reserve a single observation as a test case, train the model on the whole of the rest of the data, and then pass the test case through it and record the relevant performance metrics. Next, we do the same thing but select a different observation as the test case. We continue doing this until every observation has been used once as the test case, where we take the average of the performance metrics.
+
+Leave-one-out CV is useful for small datasets where splitting it into k folds would give variable results. It is also computationally less expensive than repeated, k-fold CV.
+
+#### NOTE 
+A supervised learning model that has not been cross-validated is virtually useless, because you have no idea whether the predictions it makes on new data will be accurate or not.
+
+### PERFORMING LEAVE-ONE-OUT CV
+Creating a resampling description for leave-one-out is just as simple as for holdout and k-fold CV. We specify leave-one-out CV when making the resample description by supplying LOO as the argument to the method. Because the test set is only a single case, we obviously can’t stratify with leave-one-out. Also, because each case is used once as the test set, with all the other data used as the training set, there’s no need to repeat the procedure:
+
+```{r}
+LOO <- makeResampleDesc(method = "LOO")
+```
+
+
+Now, let’s run the CV and get the average performance measures:
+
+```{r}
+LOOCV <- resample(learner = knn, task = diabetesTask, resampling = LOO,
+                  measures = list(mmce, acc))
+```
+
+```{r}
+LOOCV$aggr
+```
+
+If you rerun the CV over and over again, you’ll find that for this model and data, the performance estimate is more variable than for k-fold but less variable than for the holdout we ran earlier.
+
+#### CALCULATING A CONFUSION MATRIX
+Once again, let’s look at the confusion matrix:
+
+```{r}
+calculateConfusionMatrix(LOOCV$pred, relative = TRUE)
+```
+
+So you now know how to apply three commonly used types of cross-validation! If we’ve cross-validated our model and are happy that it will perform well enough on unseen data, then we would train the model on all of the data available to us, and use this to make future predictions. But I think we can still improve our kNN model. Remember how earlier, we manually choose a value of 2 for k? Well, randomly picking a value of k isn’t very clever, and there are much better ways we can find the optimal value.
+
+How does changing the value of k impact model performance? Well, values of k that are too low may start to model noise in the data. For example, if we set k = 1, then a healthy patient could be misclassified as chemically diabetic just because a single chemically diabetic patient with an unusually low insulin level was their nearest neighbor. In this situation, instead of just modeling the systematic differences between the classes, we’re also modeling the noise and unpredictable variability in the data.
+On the other hand, if we set k too high, a large number of dissimilar patients will be included in the vote, and the model will be insensitive to local differences in the data. This is, of course, the bias-variance trade-off we talked about earlier.
+
+### Tuning k to improve the model
+Let’s apply hyperparameter tuning to optimize the value of k for our model. An approach we could follow would be to build models with different values of k using our full dataset, pass the data back through the model, and see which value of k gives us the best performance. This is bad practice, because there’s a large chance we’ll get a value of k that overfits the dataset we tuned it on. So once again, we rely on CV to help us guard against overfitting. The first thing we need to do is define a range of values over which mlr will try, when tuning k:
+
+```{r}
+knnParamSpace <- makeParamSet(makeDiscreteParam("k", values = 1:10))
+```
+
+Next, we define how we want mlr to search the parameter space. There are a few options for this, and in later chapters we’ll explore others, but for now we’re going to use the grid search method. This is probably the simplest method: it tries every single value in the parameter space when looking for the best-performing value. For tuning continuous hyperparameters, or when we are tuning several hyperparameters at once, grid search becomes prohibitively expensive, so other methods like random search are preferred:
+
+```{r}
+gridSearch <- makeTuneControlGrid()
+```
+
+Next, we define how we’re going to cross-validate the tuning procedure, and we’re going to use my favorite: repeated k-fold CV. The principle here is that for every value in the parameter space (integers 1 to 10), we perform repeated k-fold CV. For each value of k, we take the average performance measure across all those iterations and compare it with the average performance measures for all the other values of k we tried. This will hopefully give us the value of k that performs best:
+
+````{r}
+cvForTuning <- makeResampleDesc("RepCV", folds = 10, reps = 20)
+````
+
+Now, we call the tuneParams() function to perform the tuning:
+
+````{r}
+tunedK <- tuneParams("classif.knn", task = diabetesTask,
+                     resampling = cvForTuning,
+                     par.set = knnParamSpace, control = gridSearch)
+````
+
+The first and second arguments are the names of the algorithm and task we’re applying, respectively. We give our CV strategy as the resampling argument, the hyperparameter space we define as the par.set argument, and the search procedure to the control argument. If we call our tunedK object, we get the best-performing value of k, 7, and the average MMCE value for that value. We can access the best-performing value of k directlyby selecting the $x component
+
+```{r}
+tunedK
+```
+
+```{r}
+tunedK$x
+```
+
+We can also visualize the tuning process
+```{r}
+knnTuningData <- generateHyperParsEffectData(tunedK)
+plotHyperParsEffect(knnTuningData, x = "k", y = "mmce.test.mean",
+                    plot.type = "line") +
+theme_bw()
+```
+
+Now we can train our final model, using our tuned value of k:
+```{r}
+tunedKnn <- setHyperPars(makeLearner("classif.knn"),
+                         par.vals = tunedK$x)
+tunedKnnModel <- train(tunedKnn, diabetesTask)
+tunedKnnModel
+```
+
+This is as simple as wrapping the makeLearner() function, where we make a new kNN learner, inside the setHyperPars() function, and providing the tuned value of k as the par.vals argument. We then train our final model as before, using the train() function.
+
+## Including hyperparameter tuning in cross-validation
+It validates our entire model-building procedure, including the hyperparameter-tuning step. The cross-validated performance estimate
+we get from this procedure should be a good representation of how we expect our model to perform on completely new, unseen data.
+The process looks pretty complicated, but it is extremely easy to perform with mlr. First, we define how we’re going to perform the inner and outer CV:
+
+```{r}
+inner <- makeResampleDesc("CV")
+outer <- makeResampleDesc("RepCV", folds = 10, reps = 5)
+```
+
+I’ve chosen to perform ordinary k-fold cross-validation for the inner loop (10 is the default number of folds) and 10-fold CV, repeated 5 times, for the outer loop. Next, we make what’s called a wrapper, which is basically a learner tied to some preprocessing
+step. In our case, this is hyperparameter tuning, so we create a tuning wrapper with makeTuneWrapper():
+
+```{r}
+knnWrapper <- makeTuneWrapper("classif.knn", resampling = inner, 
+                              par.set = knnParamSpace,
+                              control = gridSearch)
+```
+
+
+Here, we supply the algorithm as the first argument and pass our inner CV procedure as the resampling argument. We supply our hyperparameter search space as the par.set argument and our gridSearch method as the control argument (remember that we created these two objects earlier). This “wraps” together the learning algorithm with the hyperparameter tuning procedure that will be applied inside the inner CV loop. Now that we’ve defined our inner and outer CV strategies and our tuning wrapper, we run the nested CV procedure:
+
+```{r}
+cvWithTuning <- resample(knnWrapper, diabetesTask, resampling = outer)
+```
+
+The first argument is the wrapper we created a moment ago, the second argument is the name of the task, and we supply our outer CV strategy as the resampling argument. Now sit back and relax—this could take a while! Once it finishes, you can print the average MMCE:
+
+### Misclassification Error
+```{r}
+cvWithTuning$aggr
+```
+
+### Classification Accuracy
+```{r}
+1-cvWithTuning$aggr
+```
+
+Your MMCE value will probably be a little different than mine due to the random nature of the validation procedure, but the model is estimated to correctly classify 91.447% of cases on unseen data. That’s not bad; and now that we’ve cross-validated our model properly, we can be confident we’re not overfitting our data.
+
+### Using our model to make predictions
+We have our model, and we’re free to use it to classify new patients! Let’s imagine that some new patients come to the clinic:
+```{r}
+diabetesTibTest <- read_csv("Diabetes.Test.csv")
+diabetesTibTest <- diabetesTibTest %>%
+  mutate(across(where(is.character), as.factor))
+
+diabetesTibTest <- diabetesTibTest %>%
+  mutate(across(where(is.factor), as.numeric))
+
+diabetesTibTest$diabetes <- factor(diabetesTibTest$diabetes, levels = c(0,1),
+                               labels = c("No", "Yes"))
+```
+
+### View the Test Data
+```{r}
+head(diabetesTibTest,5)
+```
+
+We can pass these patients into our model and get their predicted diabetes status:
+
+```{r}
+newPatientsPred <- predict(tunedKnnModel, 
+                           newdata = diabetesTibTest)
+newPatientsPred$data
+```
+
+### Extract the Confusion Matrix on the Test Data
+```{r}
+library(caret)
+predictedLabels <-newPatientsPred$data$response  # Extract the predicted class labels
+
+# 3. Create the confusion matrix
+library(caret)  # Load the caret package
+trueLabels <- diabetesTibTest$diabetes
+confMatrix <- confusionMatrix(predictedLabels, trueLabels)
+print(confMatrix)
+```
+
+Congratulations! Not only have you built your first machine learning model, but we’ve covered some reasonably complex theory, too. In the next chapter, we’re going to learn about logistic regression, but first I want to list the strengths and weaknesses of the k-nearest neighbor algorithm.
+
+## Strengths and weaknesses of kNN
+While it often isn’t easy to tell which algorithms will perform well for a given task, here are some strengths and weaknesses that will help you decide whether kNN will perform well for your task.
+
+### The strengths of the kNN algorithm are as follows:
+* The algorithm is very simple to understand.
+* There is no computational cost during the learning process; all the computation is done during prediction.
+* It makes no assumptions about the data, such as how it’s distributed.
+
+### The weaknesses of the kNN algorithm are these:
+* It cannot natively handle categorical variables (they must be recoded first, or a different distance metric must be used).
+* When the training set is large, it can be computationally expensive to compute the distance between new data and all the cases in the training set.
+* The model can’t be interpreted in terms of real-world relationships in the data.
+* Prediction accuracy can be strongly impacted by noisy data and outliers.
+* In high-dimensional datasets, kNN tends to perform poorly. This is due to a phenomenon you’ll learn about in chapter 5, called the curse of dimensionality. 
+
+In brief, in high dimensions the distances between the cases start to look the same, so finding the nearest neighbors becomes difficult.
+
+## Summary
+kNN is a simple supervised learning algorithm that classifies new data based on the class membership of its nearest k cases in the training set. To create a machine learning model in mlr, we create a task and a learner, and then train the model using them. MMCE is the mean misclassification error, which is the proportion of misclassified cases in a classification problem. It is the opposite of accuracy. The bias-variance trade-off is the balance between two types of error in predictive accuracy. Models with high bias are underfit, and models with high variance are overfit. Model performance should never be evaluated on the data used to train it; cross-validation should be used, instead. Cross-validation is a set of techniques for evaluating model performance by splitting the data into training and test sets. Three common types of cross-validation are holdout, where a single split is used; k-fold, where the data is split into k chunks and the validation performed on each chunk; and leave-one-out, where the test set is a single case. Hyperparameters are options that control how machine learning algorithms learn, which cannot be learned by the algorithm itself. Hyperparameter tuning
+is the best way to find optimal hyperparameters. If we perform a data-dependent preprocessing step, such as hyperparameter
+tuning, it’s important to incorporate this in our cross-validation strategy, using nested cross-validation.
+
+
+## Additional Approach for KNN
+### Prepare training scheme for cross-validation
+```{r}
+control <- trainControl(method="repeatedcv", number=10, repeats=5)
+```
+
+###TRAIN YOUR ML MODELS
+# Train a SVM model
+```{r}
+library(caret) #for machine learning models
+library(psych) ##for description of  data
+library(ggplot2) ##for data visualization
+library(caretEnsemble)##enables the creation of ensemble models
+library(tidyverse) ##for data manipulation
+library(mlbench)  ## for benchmarking ML Models
+library(flextable) ## to create and style tables
+library(mltools) #for hyperparameter tuning
+library(tictoc) #for determining the time taken for a model to run
+library(ROSE)  ## for random oversampling
+library(smotefamily) ## for smote sampling
+library(ROCR)
+set.seed(123)
+tic()
+knnModel <- train(diabetes~., 
+                         data=diabetesTib, 
+                         method="knn", 
+                         trControl=control, na.action = na.omit)
+toc()
+knnModel
+```
+
+### View the Nearest Neighbors
+```{r}
+knnModel$finalModel
+```
+
+### Prediction
+```{r}
+knnpred=predict(knnModel,newdata = diabetesTibTest)
+knn.cM<- confusionMatrix(knnpred,diabetesTibTest$diabetes, positive = 'Yes', mode='everything')
+knn.cM
+m4<- knn.cM$byClass[c(1, 2, 5, 7, 11)]
+m4
+```
+
+### plotting confusion matrix
+```{r}
+knn.cM$table
+fourfoldplot(knn.cM$table, col=rainbow(4), main="Imbalanced KNN Confusion Matrix")
+```
+
+### View the number of k-Nearest Neighbors and the Accuracy
+```{r}
+library(magrittr)
+library(dplyr)
+knnModel$results %>%
+  arrange(desc(Accuracy))%>%
+  head(1)
+```
+
+The two approaches gives the same number of nearest neighbors with an accuracy of 0.9592 on the training set. 
+
+

@@ -1,0 +1,517 @@
+---
+title: "DECISION TREE AND RANDOM FOREST MODEL"
+author: "Lumumba Wandera Victor"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = NA, message = FALSE, warning = FALSE,
+                      fig.height = 5, fig.width = 8)
+```
+
+## Classifying with decision trees
+### This chapter covers
+* Working with decision trees
+
+* Using the recursive partitioning algorithm
+
+* An important weakness of decision trees There’s
+
+There’s nothing like the great outdoors. I live in the countryside, and when I walk my dog in the woods, I’m reminded just how much we rely on trees. Trees produce the atmosphere we breathe, create habitats for wildlife, provide us with food, and are surprisingly good at making predictions. Yes, you read that right: trees are good at making predictions. But before you go asking the birch in your back garden for next week’s lottery numbers, I should clarify that I’m referring to several supervised learning algorithms that use a branching tree structure. This family of algorithms can be used to solve both classification and regression tasks, can handle continuous and categorical predictors, and are naturally suited to solving multiclass classification problems.
+
+NOTE 
+Remember that a predictor variable is a variable we believe may contain information about the value of our outcome variable. 
+
+Continuous predictors can have any numeric value on their measurement scale, while categorical variables can have only finite, discrete values/categories.The basic premise of all tree-based classification algorithms is that they learn a sequence of questions that separates cases into different classes. Each question has a binary answer, and cases will be sent down the left or right branch depending on which criteria
+they meet. There can be branches within branches; and once the model is learned, it can be graphically represented as a tree. Have you ever played the game 20 Questions, where you have to guess what object someone is thinking of by asking yes-or-no questions? What about the game Guess Who, where you have to guess the other player’s character by asking questions about their appearance? These are examples of treebased classifiers. By the end of this chapter, you’ll see how such simple, interpretable models can be used to make predictions. We’ll finish the chapter by highlighting an important weakness of decision trees, which you’ll learn how to overcome in the next chapter.
+
+### What is the recursive partitioning algorithm?
+In this section, you’ll learn how decision tree algorithms—and specifically, the recursive partitioning (rpart) algorithm—work to learn a tree structure. Imagine that you want to create a model to represent the way people commute to work, given features of the vehicle. You gather information on the vehicles, such as how many wheels they have, whether they have an engine, and their weight. You could formulate your classification process as a series of sequential questions. Every vehicle is evaluated at each question and moves either left or right in the model depending on how its features satisfy the question.
+
+Notice that our model has a branching, tree-like structure, where each question splits the data into two branches. Each branch can lead to additional questions, which have branches of their own. The question parts of the tree are called nodes, and the very first question/node is called the root node. Nodes have one branch leading to them and two branches leading away from them. Nodes at the end of a series of questions are called leaf nodes or leaves. Leaf nodes have a single branch leading to them but no branches leading away from them. When a case finds its way down the tree into a leaf node, it progresses no further and is classified as the majority class within that leaf. It may seem strange to you (it does to me, anyway) that the root is at the top and the leaves are at the bottom, but this is the way tree-based models are usually represented.
+
+NOTE 
+Although not shown in this small example, it is perfectly fine (and common) to have questions about the same feature in different parts of the tree. This all seems simple so far. But in the previous simplistic example, we could have constructed this ourselves by hand. (In fact, I did!) So tree-based models aren’t necessarily learned by machine learning. A decision tree could be an established HR process for dealing with disciplinary action, for example. You could have a tree-based approach to deciding which flight to buy (is the price above your budget, is the airline reliable, is the food terrible, and so on). So how can we learn the structure of a decision tree automatically for complex datasets with many features? Enter the rpart algorithm.
+
+NOTE 
+Tree-based models can be used for both classification and regression tasks, so you may see them described as classification and regression trees
+(CART). However, CART is a trademarked algorithm whose code is proprietary. The rpart algorithm is simply an open source implementation of CART.
+You’ll learn how to use trees for regression tasks in chapter 12. At each stage of the tree-building process, the rpart algorithm considers all of the predictor variables and selects the predictor that does the best job of discriminating the classes. It starts at the root and then, at each branch, looks again for the next feature that will best discriminate the classes of the cases that took that branch. But how does rpart decide on the best feature at each split? This can be done a few different ways, and rpart offers two approaches: the difference in entropy (called the information gain) and the difference in Gini index (called the Gini gain). The two methods usually give very similar results; but the Gini index (named after the sociologist and statistician Corrado Gini) is slightly faster to compute, so we’ll focus on it.
+
+TIP 
+The Gini index is the default method rpart uses to decide how to split the tree. If you’re concerned that you’re missing the best-performing model, you can always compare Gini index and entropy during hyperparameter tuning.
+
+### Using Gini gain to split the tree
+In this section, I’ll show you how Gini gain is calculated to find the best split for a particular node when growing a decision tree. Entropy and the Gini index are two ways of trying to measure the same thing: impurity. Impurity is a measure of how heterogeneous the classes are within a node.
+
+NOTE 
+If a node contains only a single class (which would make it a leaf), it would be said to be pure.
+
+By estimating the impurity (with whichever method you choose) that would result from using each predictor variable for the next split, the algorithm can choose the feature that will result in the smallest impurity. Put another way, the algorithm chooses the feature that will result in subsequent nodes that are as homogeneous as possible. So what does the Gini index look like? Figure 7.2 shows an example split. We have 20 cases in a parent node belonging to two classes, A and B. We split the node into two leaves based on some criterion. In the left leaf, we have 11 cases from class A and 3 from class B. In the right leaf, we have 5 from class B and 1 from class A.
+
+### What about continuous and multilevel categorical predictors?
+In this section, I’ll show you how the splits are chosen for continuous and categorical predictor variables. When a predictor variable is dichotomous (has only two levels), it’s quite obvious how to use it for a split: cases with one value go left, and cases with the other value go right. Decision trees can also split the cases using continuous variables,but what value is chosen as the split point? Have a look at the example in figure 7.4. We have cases from three classes plotted against two continuous variables. The feature space is split into rectangles by each node. At the first node, the cases are split into those with a value of variable 2, greater than or less than 20. The cases that make it to
+the second node are further split into those with a value of variable 1, greater than or less than 10,000.
+
+NOTE 
+Notice that the variables are on vastly different scales. The rpart algorithm isn’t sensitive to variables being on different scales, so there’s no need to scale and center your predictors!
+
+But how is the exact split point chosen for a continuous predictor? Well, the cases in the training set are arranged in order of the continuous variable, and the Gini gain is evaluated for the midpoint between each adjacent pair of cases. If the greatest Gini gain among all predictor variables is one of these midpoints, then this is chosen as the split for that node. This is illustrated in figure 7.5. A similar procedure is used for categorical predictors with more than two levels. First, the Gini index is computed for each level of the predictor (using the proportion of each class that has that value of the predictor). The factor levels are arranged in order of their Gini indices, and the Gini gain is evaluated for a split between each adjacent pair of levels. Take a look at the example in figure 7.6. We have a factor with three levels (A, B, and C): we evaluate the Gini index of each and find that their values are B < A < C. Now we evaluate the Gini gain for the splits B versus A and C, and C
+versus B and A. In this way, we can create a binary split from categorical variables with many predictors without having to try every single possible combination of level splits (2^m–1, where m is the number of levels of the variable). If the split B versus A and C is found to have the greatest Gini gain, then cases reaching this node will go down one branch if they have a value of B for this variable, and will go down the other branch if they have a value of A or C.
+
+### Hyperparameters of the rpart algorithm
+In this section, I’ll show you which hyperparameters need to be tuned for the rpart algorithm, what they do, and why we need to tune them in order to get the bestperforming tree possible. Decision tree algorithms are described as greedy. By greedy, I don’t mean they take an extra helping at the buffet line; I mean they search for the split that will perform best at the current node, rather than the one that will produce the best result globally. For example, a particular split might discriminate the classes best at the current node but result in poor separation further down that branch. Conversely, a split that results in poor separation at the current node may yield better separation further down the tree. Decision tree algorithms would never pick this second split because they only look at locally optimal splits, instead of globally optimal ones.
+
+There are three issues with this approach:
+* The algorithm isn’t guaranteed to learn a globally optimal model.
+
+* If left unchecked, the tree will continue to grow deeper until all the leaves are pure (of only one class).
+
+* For large datasets, growing extremely deep trees becomes computationally expensive.
+
+While it’s true that rpart isn’t guaranteed to learn a globally optimal model, the depth of the tree is of greater concern to us. Besides the computational cost, growing a full-depth tree until all the leaves are pure is very likely to overfit the training set and create a model with high variance. This is because as the feature space is split up into smaller and smaller pieces, we’re much more likely to start modeling the noise in the data. How do we guard against such extravagant tree building? There are two ways of doing it:
+
+* Grow a full tree, and then prune it.
+
+* Employ stopping criteria.
+
+In the first approach, we allow the greedy algorithm to grow its full, overfit tree, and then we get out our garden shears and remove leaves that don’t meet certain criteria. This process is imaginatively named pruning, because we end up removing branches and leaves from our tree. This is sometimes called bottom-up pruning because we start from the leaves and prune up toward the root. In the second approach, we include conditions during tree building that will force splitting to stop if certain criteria aren’t met. This is sometimes called top-down pruning because we are pruning the tree as it grows down from the root. Both approaches may yield comparable results in practice, but there is a slight computational edge to top-down pruning because we don’t need to grow full trees and then prune them back. For this reason, we will use the stopping criteria approach. The stopping criteria we can apply at each stage of the tree-building process are as follows:
+
+* Minimum number of cases in a node before splitting
+
+* Maximum depth of the tree
+
+* Minimum improvement in performance for a split
+
+* Minimum number of cases in a leaf
+
+These criteria are illustrated in figure 7.7. For each candidate split during tree building, each of these criteria is evaluated and must be passed for the node to be split further.
+
+The minimum number of cases needed to split a node is called minsplit by rpart. If a node has fewer than the specified number, the node will not be split further. The maximum depth of the tree is called maxdepth by rpart. If a node is already at this depth, it will not be split further. The minimum improvement in performance is, confusingly, not the Gini gain of a split. Instead, a statistic called the complexity parameter (cp in rpart) is calculated for each level of depth of the tree. If the cp value of a depth is less than the chosen threshold value, the nodes at this level will not be split further. In other words, if adding another layer to the tree doesn’t improve the performance of the model by cp, don’t split the nodes. 
+
+Finally, the minimum number of cases in a leaf is called minbucket by rpart. If splitting a node would result in leaves containing fewer cases than minbucket, the node will not be split. These four criteria combined can make for very stringent and complicated stopping criteria. Because the values of these criteria cannot be learned directly from the data, they are hyperparameters. What do we do with hyperparameters? Tune them! So
+when we build a model with rpart, we will tune these stopping criteria to get values that give us the best-performing model.
+
+NOTE 
+Recall from chapter 3 that a variable or option than controls how an algorithm learns, but which cannot be learned from the data, is called a hyperparameter.
+
+### Building your first decision tree model
+In this section, you’re going to learn how to build a decision tree with rpart and how to tune its hyperparameters. Imagine that you work in public engagement at a wildlife sanctuary. You’re tasked with creating an interactive game for children, to teach them about different animal classes. The game asks the children to think of any animal in the sanctuary, and then asks them questions about the physical characteristics of that animal. Based on the responses the child gives, the model should tell the child what class their animal belongs to (mammal, bird, reptile, and so on). It’s important for your model to be general enough that it can be used at other wildlife sanctuaries. Let’s start by loading the mlr and tidyverse packages:
+
+```{r}
+library(mlr)
+library(tidyverse)
+```
+
+### Loading and exploring the zoo dataset
+Let’s load the zoo dataset that is built into the mlbench package, convert it into a tibble, and explore it. We have a tibble containing 101 cases and 17 variables of observations made on various animals; 16 of these variables are logical, indicating the presence or absence of some characteristic, and the type variable is a factor containing the animal classes we wish to predict.
+
+### Loading and Exploring the Zoo dataset
+```{r}
+data(Zoo, package = "mlbench")
+zooTib <- as_tibble(Zoo)
+zooTib
+```
+
+Unfortunately, mlr won’t let us create a task with logical predictors, so let’s convert them into factors instead. There are a few ways to do this, but dplyr’s mutate_if() function comes in handy here. This function takes the data as the first argument (or we could have piped this in with %>%). The second argument is our criterion for selecting columns, so here I’ve used is.logical to consider only the logical columns. The final argument is what to do with those columns, so I’ve used as.factor to convert the logical columns into factors. This will leave the existing factor type untouched
+
+### Converting logical variables to factors
+```{r}
+zooTib <- mutate_if(zooTib, is.logical, as.factor)
+zooTib
+```
+
+TIP 
+Alternatively, I could have used mutate_all(zooTib, as.factor), because the type column is already a factor.
+
+### Training the decision tree model
+In this section, I’ll walk you through training a decision tree model using the rpart algorithm. We’ll tune the algorithm’s hyperparameters and train a model using the optimal hyperparameter combination. Let’s define our task and learner, and build a model as usual. This time, we supply "classif.rpart" as the argument to makeLearner() to specify that we’re going to use rpart.
+
+### Create the Task and the Learner
+```{r}
+zooTask <- makeClassifTask(data = zooTib, target = "type")
+tree <- makeLearner("classif.rpart")
+```
+
+Next, we need to perform hyperparameter tuning. Recall that the first step is to define a hyperparameter space over which we want to search. Let’s look at the hyperparameters available to us for the rpart algorithm, in listing 7.4. We’ve already discussed the most important hyperparameters for tuning: minsplit, minbucket, cp, and maxdepth. There are a few others you may find useful to know about. The maxcompete hyperparameter controls how many candidate splits can be displayed for each node in the model summary. The model summary shows the candidate splits in order of how much they improved the model (Gini gain). It may be useful to understand what the next-best split was after the one that was actually used, but tuning maxcompete doesn’t affect model performance, only its summary. The maxsurrogate hyperparameter is similar to maxcompete but controls how many surrogate splits are shown. A surrogate split is a split used if a particular case is missing data for the actual split. In this way, rpart can handle missing data as it learns which splits can be used in place of missing variables. The maxsurrogate hyperparameter controls how many of these surrogates to retain in the model (if a case is missing a value for the main split, it is passed to the first surrogate split, then to the second surrogate if it is also missing a value for the first surrogate, and so on). Although we don’t have any missing data in our dataset, future cases we wish to predict might. We could set this to zero to save some computation time, which is equivalent to not using surrogate variables, but doing so might reduce the accuracy of predictions made on future cases with missing data. The default value of 5 is usually fine.
+
+TIP 
+Recall from chapter 6 that we can quickly count the number of missing values per column of a data.frame or tibble by running map_dbl(zooTib,
+~sum(is.na(.))).
+
+The usesurrogate hyperparameter controls how the algorithm uses surrogate splits. A value of zero means surrogates will not be used, and cases with missing data will not be classified. A value of 1 means surrogates will be used, but if a case is missing data for the actual split and for all the surrogate splits, that case will not be classified. The default value of 2 means surrogates will be used, but a case with missing data for the
+actual split and for all the surrogate splits will be sent down the branch that contained the most cases. The default value of 2 is usually appropriate.
+
+NOTE 
+If you have cases that are missing data for the actual split and all the surrogate splits for a node, you should probably consider the impact missing data is having on the quality of your dataset!
+
+### Printing hyperparameter rparts
+```{r}
+getParamSet(tree)
+```
+
+Now, let’s define the hyperparameter space we want to search over. We’re going to tune the values of minsplit (an integer), minbucket (an integer), cp (a numeric), and maxdepth (an integer).
+
+NOTE 
+Remember that we use makeIntegerParam() and makeNumericParam() to define the search spaces for integer and numeric hyperparameters, respectively.
+
+### Defining the hyperparameter space for tuning
+```{r}
+treeParamSpace <- makeParamSet(
+  makeIntegerParam("minsplit", lower = 5, upper = 20),
+  makeIntegerParam("minbucket", lower = 3, upper = 10),
+  makeNumericParam("cp", lower = 0.01, upper = 0.1),
+  makeIntegerParam("maxdepth", lower = 3, upper = 10))
+```
+
+### View the parameter space
+```{r}
+treeParamSpace
+```
+
+Next, we can define how we’re going to search the hyperparameter space we defined in listing 7.5. Because the hyperparameter space is quite large, we’re going to use a random search rather than a grid search. Recall from chapter 6 that a random search is not exhaustive (will not try every hyperparameter combination) but will randomly select combinations as many times (iterations) as we tell it to. We’re going to use 200 iterations.
+In listing 7.6 we also define our cross-validation strategy for tuning. Here, I’m going to use ordinary 5-fold cross-validation. Recall from chapter 3 that this will split the data into five folds and use each fold as the test set once. For each test set, a model will be trained on the rest of the data (the training set). This will be performed for each combination of hyperparameter values tried by the random search.
+
+NOTE 
+Ordinarily, if classes are imbalanced, I would use stratified sampling. Here, though, because we have very few cases in some of the classes, there are not enough cases to stratify (try it: you’ll get an error). For this example, we won’t stratify; but in situations where you have very few cases in a class, you should consider whether there is enough data to justify keeping that class in the model.
+
+### Define the Random Search
+```{r}
+randSearch <- makeTuneControlRandom(maxit = 200)
+cvForTuning <- makeResampleDesc("CV", iters = 5)
+```
+
+Finally, let’s perform our hyperparameter tuning!
+
+### Performing hyperparameter tuning
+```{r}
+library(parallel)
+library(parallelMap)
+parallelStartSocket(cpus = detectCores())
+tunedTreePars <- tuneParams(tree, task = zooTask,
+                            resampling = cvForTuning,
+                            par.set = treeParamSpace,
+                            control = randSearch)
+parallelStop()
+tunedTreePars
+```
+
+To speed things up, we first start parallelization by running parallelStartSocket(), setting the number of CPUs equal to the number we have available.
+
+TIP 
+If you want to use your computers for other things while tuning occurs, you may wish to set the number of CPUs used to fewer than the maximum
+available to you. Then we use the tuneParams() function to start the tuning process. The arguments are the same as we’ve used previously: the first is the learner, the second is the task, resampling is the cross-validation method, par.set is the hyperparameter space, and control is the search method. Once it’s completed, we stop parallelization and print our tuning results.
+
+WARNING 
+This takes about 30 seconds to run on my four-core machine. The rpart algorithm isn’t nearly as computationally expensive as the support vector machine (SVM) algorithm we used for classification in chapter 6. Therefore, despite tuning four hyperparameters, the tuning process doesn’t take as long (which means we can perform more search iterations).
+
+### Training the model with the tuned hyperparameters
+Now that we’ve tuned our hyperparameters, we can train our final model using them. Just like in the previous chapter, we use the setHyperPars() function to create a learner using the tuned hyperparameters, which we access using tunedTreePars$x. We can then train the final model using the train() function, as usual
+
+```{r}
+tunedTree <- setHyperPars(tree, par.vals = tunedTreePars$x)
+tunedTreeModel <- train(tunedTree, zooTask)
+```
+
+One of the wonderful things about decision trees is how interpretable they are. The easiest way to interpret the model is to draw a graphical representation of the tree. There are a few ways of plotting decision tree models in R, but my favorite is the rpart.plot() function from the package of the same name. Let’s install the rpart.plot package first and then extract the model data using the getLearnerModel() function.
+
+### Plot the Decision Tree
+```{r, fig.height=6, fig.width=10}
+library(rpart.plot)
+treeModelData <- getLearnerModel(tunedTreeModel)
+rpart.plot(treeModelData, roundint = FALSE,
+           box.palette = "BuBn",
+           type = 5)
+```
+
+The first argument of the rpart.plot() function is the model data. Because we trained this model using mlr, the function will give us a warning that it cannot find the data used to train the model. We can safely ignore this warning, but if it irritates you as much as it irritates me, you can prevent it by supplying the argument roundint = FALSE. The function will also complain if we have more classes that its default color
+palette (neediest function ever!). Either ignore this or ask for a different palette by setting the box.palette argument equal to one of the predefined palettes (run ?rpart.plot for a list of available palettes). The type argument changes how the tree is displayed. I quite like the simplicity of option 5, but check ?rpart.plot to experiment with the other options.
+
+The plot generated by listing 7.9 is shown in figure 7.8. Can you see how simple and interpretable the tree is? When predicting the classes of new cases, they start at the top (the root) and follow the branches based on the splitting criterion at each node. The first node asks whether the animal produces milk or not. This split was chosen because it has the highest Gini gain of all candidate splits (it immediately discriminates mammals, which make up 41% of the training set from the other classes). The leaf nodes tell us which class is classified by that node and the proportions of each class in that node. For example, the leaf node that classifies cases as mollusc.et.al contains 83% mollusc.et.al cases and 17% insect cases. The percentage at the bottom of each leaf indicates the percentage of cases in the training set in this leaf. To inspect the cp values for each split, we can use the printcp() function. This function takes the model data as the first argument and an optional digits argument specifying how many decimal places to print in the output. There is some useful information in the output, such as the variables actually used for splitting the data and the root node error (the error before any splits). Finally, the output includes a table of the cp values for each split.
+
+### Exploring the Model
+```{r}
+printcp(treeModelData, digits = 3)
+```
+
+### Cross-validating our decision tree model
+In this section, we’ll cross-validate our model-building process, including hyperparameter tuning. We’ve done this a few times already now, but it’s so important that I’m going to reiterate: you must include data-dependent preprocessing in your crossvalidation. This includes the hyperparameter tuning we performed in listing 7.7. First, we define our outer cross-validation strategy. This time I’m using 5-fold crossvalidation
+as my outer cross-validation loop. We’ll use the cvForTuning resampling description we made in listing 7.6 for the inner loop. Next, we create our wrapper by “wrapping together” our learner and hyperparameter tuning process. We supply our inner cross-validation strategy, hyperparameter
+space, and search method to the makeTuneWrapper() function. Finally, we can start parallelization with the parallelStartSocket() function, and start the cross-validation process with the resample() function. The resample() function takes our wrapped learner, task, and outer cross-validation strategy as arguments.
+
+### WARNING 
+This takes about 2 minutes on my four-core machine.
+
+### Cross-validating the model-building process
+```{r}
+outer <- makeResampleDesc("CV", iters = 5)
+treeWrapper <- makeTuneWrapper("classif.rpart", resampling = cvForTuning,
+                               par.set = treeParamSpace,
+                               control = randSearch)
+parallelStartSocket(cpus = detectCores())
+cvWithTuning <- resample(treeWrapper, zooTask, resampling = outer)
+parallelStop()
+```
+
+Now let’s look at the cross-validation result and see how our model-building process performed.
+
+### Extract the Cross Validation Results
+```{r}
+cvWithTuning
+```
+
+Hmm, that’s a little disappointing, isn’t it? During hyperparameter tuning, the best hyperparameter combination gave us a mean misclassification error (MMCE) of 0.0885714 (you likely got a different value). But our cross-validated estimate of model performance gives us an MMCE of 0.12. Quite a large difference! What’s going on? Well, this is an example of overfitting. Our model is performing better during hyperparameter tuning than during cross-validation. This is also a good example of why it’s important to include hyperparameter tuning inside our cross-validation procedure. We’ve just discovered the main problem with the rpart algorithm (and decision trees in general): they tend to produce models that are overfit. How do we overcome this problem? The answer is to use an ensemble method, an approach where we use multiple models to make predictions for a single task. In the next chapter, I’ll show you how ensemble methods work, and we’ll use them to vastly improve our decision tree model. I suggest that you save your .R file, as we’re going to continue using the same dataset and task in the next chapter. This is so I can highlight for you how much better these ensemble techniques are, compared to ordinary decision trees.
+
+### Strengths and weaknesses of tree-based algorithms
+While it often isn’t easy to tell which algorithms will perform well for a given task, here are some strengths and weaknesses that will help you decide whether decision trees will perform well for you.
+
+The strengths of tree-based algorithms are as follows:
+* The intuition behind tree-building is quite simple, and each individual tree is
+very interpretable.
+
+* It can handle categorical and continuous predictor variables.
+
+* It makes no assumptions about the distribution of the predictor variables.
+
+* It can handle missing values in sensible ways.
+
+* It can handle continuous variables on different scales.
+
+### The weakness of tree-based algorithms is this:
+* Individual trees are very susceptible to overfitting—so much so that they are rarely used.
+
+Summary
+The rpart algorithm is a supervised learner for both classification and regression problems. Tree-based learners start with all the cases in the root node and find sequential binary splits until cases find themselves in leaf nodes. Tree construction is a greedy process and can be limited by setting stopping criteria (such as the minimum number of cases required in a node before it can be split). The Gini gain is a criterion used to decide which predictor variable will result in the best split at a particular node. Decision trees have a tendency to overfit the training set.
+
+## Improving decision trees with random forests and boosting
+In this section, we will cover the following key area of interest
+* Understanding ensemble methods
+* Using bagging, boosting, and stacking
+* Using the random forest and XGBoost algorithms
+* Benchmarking multiple algorithms against the same task
+
+In the last chapter, I showed you how we can use the recursive partitioning algorithm to train decision trees that are very interpretable. We finished by highlighting an important limitation of decision trees: they have a tendency to overfit the training set. This results in models that generalize poorly to new data. As a result, individual decision trees are rarely used, but they can become extremely powerful predictors when many trees are combined together. By the end of this chapter, you’ll understand the difference between ordinary decision trees and ensemble methods, such as random forest and gradient boosting, which combine multiple trees to make predictions. Finally, as this is the last chapter in the classification part of the book, you’ll learn what benchmarking is and how to use it to find the best-performing algorithm for a particular problem. Benchmarking is the process of letting a bunch of different learning algorithms fight it out to select the one that performs best for a particular problem. We will continue to work with the zoo dataset we were using in the previous chapter. If you no longer have the zooTib, zooTask, and tunedTree objects defined in your global environment (run ls() to find out), just rerun listings 7.1 through 7.8 from the previous chapter.
+
+## Ensemble techniques: Bagging, boosting, and stacking
+In this section, I’ll show you what ensemble methods are and how they can be used to improve the performance of tree-based models. Imagine that you wanted to know what a country’s views were on a particular issue. What would you consider to be a better barometer of public opinion: the opinion of a single person you ask on the street, or the collective vote of many people at the ballot box? In this scenario, the decision tree is the single person on the street. You create a single model, pass it new data, and ask its opinion as to what the predicted output should be. Ensemble methods, on the other hand, are the collective vote.
+
+The idea behind ensemble methods is that instead of training a single model, you train multiple models (sometimes hundreds or even thousands of models). Next, you ask the opinion of each of those models as to what the predicted output should be for new data. You then consider the votes from all the models when making the final prediction. The idea is that predictions informed by a majority vote will have less variance than predictions made by a lone model.
+
+## There are three different ensemble methods:
+* Bootstrap aggregating
+
+* Boosting
+
+* Stacking
+
+Let’s discuss each of these in more detail.
+
+## Training models on sampled data: Bootstrap aggregating
+In this section, I’ll explain the principle of the bootstrap aggregating ensemble technique, and how this is used in an algorithm called random forest. Machine learning algorithms can be sensitive to noise resulting from outliers and measurement error. If noisy data exists in our training set, then our models are more likely to have high variance when making predictions on future data. How can we train a learner that makes use of all the data available to us, but can look past this noisy data and reduce prediction variance? The answer is to use bootstrap aggregating (or bagging
+for short).
+
+The premise of bagging is quite simple:
+1 Decide how many sub-models you’re going to train.
+2 For each sub-model, randomly sample cases from the training set, with replacement, until you have a sample the same size as the original training set.
+3 Train a sub-model on each sample of cases.
+4 Pass new data through each sub-model, and let them vote on the prediction.
+5 The modal prediction (the most frequent prediction) from all the sub-models is used as the predicted output.
+
+The most critical part of bagging is the random sampling of the cases. Imagine that you’re playing Scrabble and have the bag of 100 letter tiles. Now imagine that you put your hand into the bag, blindly rummage around a little, pull out a tile, and write down what letter you got. This is taking a random sample. Then, crucially, you put the tile back. This is called replacement, and sampling with replacement simply means putting the values back after you’ve drawn them. This means the same value could be drawn again. You continue to do this until you have drawn 100 random samples, the same number as are in the bag to begin with. This process is called bootstrapping and is an important technique in statistics and machine learning. Your bootstrap sample of 100 tiles should do a reasonable job of reflecting the frequencies of each letter in the original bag.
+
+So why does training sub-models on bootstrap samples of the training set help us? Imagine that cases are distributed over their feature space. Each time we take a bootstrap sample, because we are sampling with replacement, we are more likely to select a case near the center of that distribution than a case that lies near the extremes of the distribution. Some of the bootstrap samples may contain many extreme values and make poor predictions on their own, but here’s the second crucial part of bagging: we aggregate the predictions of all these models. This simply means we let them all make their predictions and then take the majority vote. The effect of this is a sort of averaging out of all the models, which reduces the impact of noisy data and reduces overfitting.
+
+### LEARNING FROM THE PREVIOUS MODELS’ RESIDUALS: GRADIENT BOOSTING
+Gradient boosting is very similar to adaptive boosting, only differing in the way it corrects the mistakes of the previous models. Rather than weighting the cases differently depending on the accuracy of their classification, subsequent models try to predict the residuals of the previous ensemble of models. A residual, or residual error, is the difference between the true value (the “observed” value) and the value predicted by a model. This is easier to understand when thinking about predicting a continuous variable (regression). Imagine that you’re trying to predict how much debt a person has. If an individual has a real debt of $2,500, but our model predicts they have a debt of $2,100, the residual is $400. It’s called a residual because it’s the error left over after the model has made its prediction. It’s a bit harder to think of a residual for a classification model, but we can quantify the residual error of a classification model as
+
+* The proportion of all cases incorrectly classified
+* The log loss
+
+The proportion of cases that were misclassified is pretty self-explanatory. The log loss is similar but more greatly penalizes a model that makes incorrect classifications confidently. If your friend tells you with “absolute certainty” that Helsinki is the capital of Sweden (it’s not), you’d think less of them than if they said they “think it might be” the capital. This is how log loss treats misclassification error. For either method, models that give the correct classifications will have a lower error than those that make lots of misclassifications. Which method is better? Once again it depends, so we’ll let hyperparameter tuning choose the best one.
+
+### NOTE 
+Using the proportion of misclassified cases as the residual error tends to result in models that are a little more tolerant of a small number of misclassified cases than using the log loss. These measures of residual error that are minimized at each iteration are called loss functions. So in gradient boosting, subsequent models are chosen that minimize the residual error of the previous ensemble of models. By minimizing the residual error, subsequent models will, in effect, favor the correct classification of cases that were previously misclassified (thereby modeling the residuals).
+
+Gradient boosting doesn’t necessarily train sub-models on samples of the training set. If we choose to sample the training set, the process is called stochastic gradient boosting (stochastic just means “random,” but it is a good word to impress your friends with). Sampling in stochastic gradient descent is usually without replacement, which means it isn’t a bootstrap sample. We don’t need to replace each case during sampling because it’s not important to sample cases based on their weights (like in AdaBoost ) and there is little impact on performance. Just like for AdaBoost and random forest, it’s a good idea to sample the training set, because doing so reduces variance. The proportion of cases we sample from the training set can be tuned as a hyperparameter. There are a number of gradient boosting algorithms around, but probably the best known is the XGBoost (extreme gradient boosting) algorithm. Published in 2014, XGBoost is an extremely popular classification and regression algorithm. Its popularity is due to how well it performs on a wide range of tasks, as it tends to outperform most other supervised learning algorithms. Many Kaggle (an online community that runs machine learning competitions) data science competitions have been won using XGBoost, and it has become the supervised learning algorithm many data scientists try before anything else. While XGBoost is an implementation of gradient boosting, it has a few tricks up its sleeve:
+
+* It can build different branches of each tree in parallel, speeding up model building.
+* It can handle missing data.
+* It employs regularization. You’ll learn more about this in chapter 11, but it prevents individual predictors from having too large of an impact on predictions (this helps to prevent overfitting).
+
+### TIP 
+There are even more recent gradient boosting algorithms available, such as LightGBM and CatBoost. These are not currently wrapped by the mlr package, so we’ll stick with XGBoost, but feel free to explore them yourself!
+
+### Learning from predictions made by other models: Stacking
+In this section, I’ll explain the principle of the stacking ensemble technique and how it is used to combine predictions from multiple algorithms. Stacking is an ensemble technique that, while valuable, isn’t as commonly used as bagging and boosting. For this reason, I won’t discuss it in a lot of detail, but if you’re interested in learning more, I recommend Ensemble Methods: Foundations and Algorithms by Zhi-Hua Zhou (Chapman and Hall/CRC, 2012). In bagging and boosting, the learners are often (but don’t always have to be) homogeneous. Put another way, all of the sub-models were learned by the same algorithm (decision trees). Stacking explicitly uses different algorithms to learn the sub-models.
+
+For example, we may choose to use the kNN algorithm (from chapter 3), logistic regression algorithm (from chapter 4), and the SVM algorithm (from chapter 6) to
+
+### build three independent base models.
+The idea behind stacking is that we create base models that are good at learning different patterns in the feature space. One model may then be good at predicting in one area of the feature space but makes mistakes in another area. One of the other models may do a good job of predicting values in an area of the feature space where the others do poorly. So here’s the key in stacking: the predictions made by the base models are used as predictor variables (along with all the original predictors) by another model: the stacked model. This stacked model is then able to learn from the predictions made by the base models to make more accurate predictions of its own. Stacking can be tedious and complicated to implement, but it usually results in improved model performance if you use base learners that are different enough from each other. I hope I’ve conveyed a basic understanding of ensemble techniques, in particular the random forest and XGBoost algorithms. In the next section, we’ll use these two algorithms to train models on our zoo task and see which performs the best!
+
+### NOTE 
+Ensemble methods like bagging, boosting, and stacking are not strictly machine learning algorithms in their own right. They are algorithms that can
+be applied to other machine learning algorithms. For example, I’ve described bagging and boosting here as being applied to decision trees. This is because ensembling is most commonly applied to tree-based learners; but we could just as easily apply bagging and boosting to other machine learning algorithms, such as kNN and linear regression.
+
+### Building your first random forest model
+In this section, I’ll show you how to build a random forest model (using bootstrapping to train many trees and aggregating their predictions) and how to tune its hyperparameters. There are four important hyperparameters for us to consider:
+
+* ntree—The number of individual trees in the forest
+* mtry—The number of features to randomly sample at each node
+* nodesize—The minimum number of cases allowed in a leaf (the same as minbucket in rpart)
+* maxnodes—The maximum number of leaves allowed
+
+Because we’re aggregating the votes of many trees in random forest, the more trees we have, the better. There is no downside to having more trees aside from computational cost: at some point, we get diminishing returns. Rather than tuning this value, I usually fix it to a number of trees I know fits my computational budget, generally several hundred to the low thousands. Later in this section, I’ll show you how to tell if you’ve used enough trees, or if you can reduce your tree number to speed up training times. The other three hyperparameters—mtry, nodesize, and maxnodes—will need tuning, though, so let’s get started. We’ll continue with our zooTask that we defined in the last chapter (if you no longer have zooTask defined in your global environment, just rerun listings 7.1, 7.2, and 7.3). The first thing to do is create a learner with the make- Learner() function. This time, our learner is "classif.randomForest":
+
+### Load the Zoo Data
+```{r}
+library(tidyverse)
+library(mlr)
+data(Zoo, package = "mlbench")
+zooTib <- as_tibble(Zoo)
+zooTib
+```
+
+The variables in the data above are all logical variables, we will have to convert the logical variable to factor variables. 
+
+### Convert the Logical Variable into factor
+```{r}
+zooTib <- mutate_if(zooTib, is.logical, as.factor)
+zooTib
+```
+
+### Creating the task and learner
+```{r}
+zooTask <- makeClassifTask(data = zooTib, target = "type")
+forest <- makeLearner("classif.randomForest")
+```
+
+
+Next, we’ll create the hyperparameter space we’re going to tune over. To begin with, we want to fix the number of trees at 300, so we simply specify lower = 300 and upper = 300 in its makeIntegerParam() call. We have 16 predictor variables in our dataset, so let’s search for an optimal value of mtry between 6 and 12. Because some of our groups are very small (probably too small), we’ll need to allow our leaves to have a small number of in them, so we’ll tune nodesize between 1 and 5. Finally, we don’t want to constrain the tree size too much, so we’ll search for a maxnodes value between 5 and 20.
+
+## Tuning the Random Forest Parameters
+### Creates the hyperparameter tuning space
+```{r}
+forestParamSpace <- makeParamSet(
+  makeIntegerParam("ntree", lower = 300, upper = 300),
+  makeIntegerParam("mtry", lower = 6, upper = 12),
+  makeIntegerParam("nodesize", lower = 1, upper = 5),
+  makeIntegerParam("maxnodes", lower = 5, upper = 20))
+forestParamSpace
+```
+
+### Defines a random search method with 100 iterations
+```{r}
+randSearch <- makeTuneControlRandom(maxit = 100)
+```
+
+### Defines a 5-fold cross-validation strategy
+```{r}
+library(parallelMap)
+library(parallel)
+cvForTuning <- makeResampleDesc("CV", iters = 5)
+parallelStartSocket(cpus = detectCores())
+```
+
+### Tunes the hyperparameters
+```{r}
+tunedForestPars <- tuneParams(forest, task = zooTask,
+                              resampling = cvForTuning,
+                              par.set = forestParamSpace,
+                              control = randSearch)
+parallelStop() ### Prints the tuning results
+tunedForestPars
+```
+
+Now let’s train a final model by using setHyperPars() to make a learner with our tuned hyperparameters, and then passing it to the train() function:
+```{r}
+tunedForest <- setHyperPars(forest, par.vals = tunedForestPars$x)
+tunedForestModel <- train(tunedForest, zooTask)
+```
+
+How do we know if we’ve included enough trees in our forest? We can plot the mean out-of-bag error against the tree number. When building a random forest, remember that we take a bootstrap sample of cases for each tree. The out-of-bag error is the mean prediction error for each case, by trees that did not include that case in their bootstrap. Out-of-bag error estimation is specific to algorithms that use bagging and allows us to estimate the performance of the forest as it grows. The first thing we need to do is extract the model information using the getLearnerModel() function. Then we can simply call plot() on this model data object (specifying what colors and linetypes to use for each class). Let’s add a legend using the legend() function so we know what we’re looking at.
+
+### Plotting the out-of-bag error
+```{r, fig.height=5, fig.width=9}
+forestModelData <- getLearnerModel(tunedForestModel)
+species <- colnames(forestModelData$err.rate)
+plot(forestModelData, col = 1:length(species), lty = 1:length(species))
+legend("topright", species,
+       col = 1:length(species),
+       lty = 1:length(species))
+```
+
+Plotting the mean out-of-bag error against tree number. For a given forest size during training, the mean out-of-bag error is plotted on the y-axis for each class (different lines) and for the overall out of bag (OOB) error. The out-of-bag error is the mean prediction error for each case, by trees that did not include that case in their bootstrap sample. The y-axis shows the mean outof-bag error across all cases
+
+### Cross-validating the model-building process
+```{r}
+outer <- makeResampleDesc("CV", iters = 5)
+forestWrapper <- makeTuneWrapper("classif.randomForest",
+                                 resampling = cvForTuning,
+                                 par.set = forestParamSpace,
+                                 control = randSearch)
+parallelStartSocket(cpus = detectCores())
+cvWithTuning <- resample(forestWrapper, zooTask, resampling = outer)
+parallelStop()
+cvWithTuning
+```
+
+Wow! Look how much better our random forest model performs compared to our original decision tree (remind yourself by looking at listing 7.12 in the last chapter)! Bagging has greatly improved our classification accuracy. The model's accuracy is approximately $(1- 0.0395238)\times100 = 96.04762\%$
+
+### Prediction using the new data
+```{r}
+set.seed(123)
+zooTibsample <- zooTib[sample(nrow(zooTib), 20), ]
+print(zooTibsample)
+```
+
+### Prediction and Creation of Confusion Matrix
+```{r}
+# 2. Make predictions using the tuned model
+predictions <- predict(tunedForestModel, newdata = zooTibsample)
+predictedLabels <- predictions$data$response  # Extract the predicted class labels
+
+# 3. Create the confusion matrix
+library(caret)  # Load the caret package
+trueLabels <- zooTibsample$type
+confMatrix <- confusionMatrix(predictedLabels, trueLabels)
+print(confMatrix)
+
+```
+
+### Variable Importance
+```{r, fig.height=4, fig.width=8}
+# Load necessary library
+library(randomForest)
+
+# Extract the trained random forest model from the tuned learner
+rfModel <- getLearnerModel(tunedForestModel)
+
+# Get the variable importance
+varImp <- importance(rfModel)
+
+# Convert to a data frame for easier plotting
+varImpDF <- as.data.frame(varImp)
+varImpDF$Variable <- rownames(varImpDF)
+varImpDF <- varImpDF[order(varImpDF$MeanDecreaseGini, decreasing = TRUE),]
+
+# Print the variable importance
+print(varImpDF)
+
+# Plot the variable importance using ggplot2      
+ggplot(varImpDF, aes(x = reorder(Variable, MeanDecreaseGini), y = MeanDecreaseGini)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = round(MeanDecreaseGini, 2)), 
+            hjust = -0.2, size = 3) +  # Adjust hjust for positioning the text
+  coord_flip() +
+  labs(title = "Variable Importance in Random Forest",
+       x = "Features",
+       y = "Mean Decrease in Gini Index") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5))+ # Center the plot title
+  ggtitle("Plot of Features Importance for the Tuned Random Forest Model")
+
+```

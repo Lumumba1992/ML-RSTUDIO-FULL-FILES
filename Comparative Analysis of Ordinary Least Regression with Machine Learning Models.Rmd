@@ -1,0 +1,802 @@
+---
+title: 'A COMPARATIVE ANALYSIS OF ORDINARY LINEAR MODEL WITH MACHINE LEARNING MODELS; k-NN and SVM'
+Assignment: ''
+author: "Lumumba Wandera Victor"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+  word_document: default
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+\newpage
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE,comment = NA, message=FALSE,
+                      fig.height=4, fig.width=6)
+```
+
+Use the data called heart attached to this document and run a multiple regression to determine if smoking and biking significantly causes heart disease. Your report should include the following:
+
+### Load the data
+```{r}
+library(stargazer)
+library(ggplot2)
+library(tidyverse)
+library(sjPlot)
+library(corrplot)
+data <- read.csv("regression.csv")
+head(data,5)
+```
+
+### Check the structure of the data
+```{r}
+str(data)
+```
+
+### I. The fitted linear model and an interpretation of the model equation using 80% observation for training and 20% for testing.
+
+In this paper, MPG (miles per gallon) is going to be our dependent variable. MPG represents the fuel efficiency of the vehicles, which is a common dependent variable in automotive analysis. It's typically used to measure how efficiently a vehicle uses fuel to travel a certain distance. In this dataset, other variables like GallonsPer100Miles or Seconds0to60 can be considered independent variables that affect MPG.
+
+```{r}
+set.seed(16)
+ind <- sample(2, nrow(data), replace = T, prob = c(0.8, 0.2))
+
+train_data <- data[ind == 1, ]
+test_data <- data[ind == 2, ]
+```
+
+### View the Results using Stargazer and tab_model() Function
+```{r}
+model <- lm(MPG~GallonsPer100Miles+Cylinders + Displacement100ci + Horsepower100 + Weight1000lb + Seconds0to60, data = train_data)
+stargazer(model, type = "text")
+#tab_model(model,
+          #show.se = TRUE,
+          #show.stat = TRUE)
+```
+
+### Obtain the Performance Metrics
+```{r}
+summary(model)$r.squared %>% 
+  c(paste("Root Mean Squared Error (RMSE):", sqrt(mean(model$residuals^2))), 
+    paste("R-squared:", .), 
+    paste("Adjusted R-squared:", summary(model)$adj.r2), 
+    paste("AIC:", AIC(model)), 
+    paste("BIC:", BIC(model))) %>% 
+  cat(paste0("* ", .), sep = "\n")
+
+```
+
+### Report the Results using Report Function
+```{r}
+library(report)
+report_table(model)
+```
+
+### II. The significance of the explanatory variables.
+The regression analysis reveals that the dependent variable, MPG (miles per gallon), is significantly influenced by several independent variables. GallonsPer100Miles has a strong negative relationship with MPG (coef. = -3.336, p < 0.001), indicating that as gallons per 100 miles increase, MPG decreases. Similarly, Horsepower100 has a positive relationship (coef. = 3.115, p < 0.001), suggesting that higher horsepower is associated with lower MPG.
+
+Other variables such as Weight1000lb also negatively impact MPG (coef. = -1.650, p < 0.001), implying that heavier vehicles tend to have lower fuel efficiency. However, Cylinders, Displacement100ci, and Seconds0to60 show no statistically significant relationship with MPG. The overall model is highly significant (F Statistic = 450.982, p < 0.001) and explains approximately 90.2% of the variance in MPG. Therefore, these variables collectively provide a good understanding of the factors affecting fuel efficiency in vehicles.
+
+### III. The contribution of the explanatory variables toward the variations in the dependent variable.
+In the model above, 90% of the variation in MPG is explained by all the predictors in the model, as indicated by an adjusted R-square of 0.900. The following is the individual cotribution of each predictor to the predicted variable.
+```{r}
+library(relaimpo)
+rel_imp <- calc.relimp(model, type = "lmg")
+rel_imp
+```
+
+The relative importance metrics indicate how much each predictor contributes to the variance explained by the model.
+
+* GallonsPer100Miles has the highest importance with an LMG (Lindeman, Merenda, Gold) value of 0.291 (29.1%), suggesting it contributes the most to explaining the variance in MPG.
+
+* Weight1000lb follows with a relative importance of 0.173 (17.3%), indicating its significant contribution to explaining MPG variance.
+
+* Displacement100ci also plays a considerable role with a relative importance of 0.143 (14.3%).
+
+* Horsepower100 and Cylinders have similar importance values of around 0.129 (12.9%), indicating their moderate contributions.
+
+* Seconds0to60 has the lowest relative importance at 0.037 (3.7%), suggesting it has the least impact on explaining MPG variance.
+
+* Even though Cyliners had no significant effect on the PMG, the variable explains 0.1297 (12.97%) of the variation in MPG.
+
+The average coefficients for different model sizes show the estimated impact of each variable on MPG at various stages of model complexity, with coefficients becoming less extreme as more variables are added to the model. These results can be visualized as shown below.
+
+```{r, fig.height=5}
+library(ggplot2)
+# Convert rel_imp$lmg to a data frame
+df <- data.frame(variable = names(rel_imp$lmg), importance = rel_imp$lmg)
+
+# Arrange the data frame in descending order of relative importance
+df <- df[order(df$importance, decreasing = TRUE), ]
+
+# Create the bar plot using ggplot2
+ggplot(df, aes(x = reorder(variable, -importance), y = importance)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  geom_text(aes(label = paste0(round(importance * 100, 3), "%")), vjust = -0.5, size = 3) +  # Format labels as percentages
+  labs(x = "Independent variables", y = "Relative Importance", 
+       title = "A Bar plot of Relative Importance") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  
+```
+
+### IV. Determine the overall significance of the fitted model.
+The overall significance of the model is determined by looking at the F-value and its associated p-value. From the results above, the F-value of F Statistic 450.982*** (df = 6; 293), which is statistically significant indicates that the model is overall significant and can be used for prediction. 
+
+### V. Conduct model diagnostics on the fitted model to see if the model is appropriate for predicting future occurrence of heart disease.
+
+#### I. Normality of the residuals
+
+Among the model diagnostics include the normality of the regression residuals, homoscedastic variance of the error term and the correlation of the predictors. Consider the following plot of the regression residuals. 
+
+```{r}
+library(forecast)
+checkresiduals(model)
+```
+
+The histogram of the distribution of the residuals shows a fairly normally distributed residuals with some aspects of positively skewed however, with no much concern. Further we can test normality using Q-Q plot together with histogram as shown below, showing normally distributed residuals
+
+```{r}
+library(car)
+par(mfrow = c(1, 2))
+# Q-Q plot
+qqPlot(model$residuals, main = "Q-Q Plot of the regression residuals")
+# Histogram
+hist(model$residuals, col = "lightblue",breaks = 20, main = "Histogram of Residuals")
+```
+
+The shows a fairly normal distribution of the regression residuals with minor aspects of positively skewed distribution, which in this case is not of serious concern. Consider the following inferential results to check the normality of the residuals
+
+```{r}
+# Shapiro-Wilk Test (for formality)
+shapiro.test(model$residuals)  # Check p-value for normality
+```
+
+The results above with the accompanied p-value shows the regression residuals do not follow a normal distribution. As said earlier, the regression residuals appears to have a positively skewed distribution, however, this is not of great concern. 
+
+#### II. Homoscedasticity
+The assumption requires that variance of the regression residuals should constant over time. Otherwise if violated, our model will suffer from heteroscedastic problem. Consider the results below.
+```{r}
+library(car)
+library(tseries)
+```
+
+### Heteroscedasticity
+```{r}
+ncvTest(model)
+```
+
+Since the p-value is less than the conventional significance level of 0.05, we reject the null hypothesis of constant variance. This means that there is enough evidence to conclude that the variance of the residuals varies across the range of the predictor variable(s). In other words, our model is suffering from non-constant variance of the error term. Over time, the variance of the regression residuals is not constant.
+
+#### III. Multicollinearity
+```{r}
+vif(model)
+```
+
+The VIF of 1 indicates no correlation, no multicollinearity. The VIF between 1 and 5 indicates a moderate correlation, some multicollinearity but may not be a major concern. The VIF greater than 5 indicates a high correlation, significant multicollinearity which can cause issues with your model. Based on the output above, our model is suffering from multicollinearity and therefore good for prediction. Some variables are likely correlated. Let's look at the correlation plot below.
+
+```{r fig.height=5, fig.width=7}
+# Select numeric columns from Wine_data (assuming these are the columns you want to analyze)
+numeric_data <- train_data[, sapply(train_data, is.numeric)]
+
+# Calculate correlation matrix
+correlation_matrix <- cor(numeric_data)
+# Create a correlation heatmap using corrplot
+corrplot(correlation_matrix,
+         method = "color",            # Display correlations using color
+         type = "upper",              # Show upper triangle of the correlation matrix
+         tl.col = "black",            # Color of text labels
+         tl.srt = 45,                 # Rotate text labels by 45 degrees
+         diag = FALSE,                # Exclude diagonal elements
+         addCoef.col = "black",       # Color of correlation coefficients
+         col = colorRampPalette(c("blue", "white", "red"))(100),  # Custom color palette
+         main = "Correlation Heatmap", # Main title
+         pch = 16,                    # Use solid circles for data points
+         cex.lab = 1.2,               # Adjust label size
+         cex.main = 0.5 ,              # Adjust main title size
+         cex.axis = 0.5 ,              # Adjust axis label size
+         number.cex = 0.5)             # Adjust number size in the color legend
+```
+
+Some variables above are highly correlated. For instance, Displace and weight are highly correlated. Cylinder and Displacement are also highly correlated as shown in the graph which a correlation coefficient of 0.95. These are possible reasons for our model to suffer from multicollinearity. 
+#### IV. AIC and BIC
+```{r}
+library(report)
+report_table(model)
+```
+
+
+### VI. Use the model trained with the 80% observations above to get the predicted values for 20% observations.
+
+### Prediction and a Plot of the Predicted and Actual MPG (Testing Data)
+```{r}
+# Predict values on the test set
+pred_reg <- predict(model, newdata = test_data)
+
+# Add predictions as a new column to the test set
+test_data$pred_reg <- pred_reg
+head(test_data,10)
+```
+
+### Plot
+```{r}
+library(ggplot2)
+library(ggthemes)
+# Combine data into a data frame
+data1 <- data.frame(Actual_MPG = test_data$MPG, Predicted_MPG = test_data$pred_reg)
+
+# Create line plot
+ggplot(data1, aes(x = 1:nrow(data1))) +
+  geom_line(aes(y = Actual_MPG, color = "Actual MPG")) +
+  geom_line(aes(y = Predicted_MPG, color = "Predicted MPG")) +
+  scale_color_manual(name = "Variable", values = c("Actual MPG" = "blue", "Predicted MPG" = "red")) +
+  labs(x = "Time Axis", y = "MPG", title = "Actual vs Predicted MPG") +
+  theme_economist()
+```
+
+From the plot above, the model don't seem to work well since the predicted MPG is lying slightly far below the actual MPG, and this is a serious concern. It mean that our model is not correctly capturing the variation in MPG as explained by the predictors in the model. 
+
+### VII. Using an appropriate tool/method determine whether there is a significant difference between the observed and the corresponding predicted values of the occurrence of heart disease found in (vi) and draw your conclusion.
+
+```{r}
+plot(data1$Actual_MPG, data1$Predicted_MPG, ylab = "MPG", xlab = "Predicted MPG", main ="Scatter plot of Observed and Predicted MPG")
+abline(lm(data1$Actual_MPG ~ data1$Predicted_MPG), col = "red")
+
+```
+
+### T_test to determine if there exist a significane difference between the observed and predicted heart disease
+```{r}
+library(report)
+head(data1,5)
+T_Test <- t.test(data1$Actual_MPG, data1$Predicted_MPG, var.equal = TRUE, data = data1)  # Assuming equal variances
+T_Test
+```
+
+The results above indicates that there is a significant difference between the the observed MPG and the predicted MPG since the p-value if greater than less than 0.05. This means that our model is not doing well in terms of prediction. 
+
+
+### VIII. Would you want to revise your answer to (v) given your results in (vi) and (vii).
+Based on the results in (VI) and (VII) I would like not revise my answer for (V) since the estimated model is not appropriate for prediction. 
+
+## MACHINE LEARNING
+### Load the Following Libraries
+```{r}
+library(recipes)
+library(lava)
+library(sjmisc)
+library(igraph)
+library(e1071)
+library(hardhat)
+library(ipred)
+library(caret)
+library(sjPlot)
+library(nnet)
+library(wakefield)
+library(kknn)
+library(dplyr)
+library(nnet)
+library(caTools)
+library(ROCR)
+library(stargazer)
+library(dplyr)
+library(nnet)
+library(caTools)
+library(ROCR)
+library(stargazer)
+library(ISLR)
+library(ISLR2)
+library(MASS)
+library(splines)
+library(splines2)
+library(pROC)
+library(ISLR)
+library(ISLR2)
+library(MASS)
+library(splines)
+library(splines2)
+library(pROC)
+library(randomForest)
+library(rpart)
+library(rpart.plot)
+library(rattle)
+library(ISLR2)
+library(MASS)
+library(splines)
+library(pROC)
+library(rattle)
+library(rpart)
+library(party)
+library(partykit)
+library(ggplot2)
+library(tune)
+library(TunePareto)
+```
+
+## KNN Model
+```{r}
+set.seed(333)
+trControl <- trainControl(method = 'repeatedcv',
+                          number = 10,
+                          repeats = 3)
+attach(data)
+```
+
+```{r}
+FIT <- train(MPG~GallonsPer100Miles+Cylinders + Displacement100ci + Horsepower100 + Weight1000lb + Seconds0to60, 
+             data = train_data,
+             tuneGrid = expand.grid(k=1:70),
+             method = 'knn',
+             trControl = trControl,
+             preProc = c('center', 'scale'))
+```
+
+
+### Model Performance
+```{r}
+FIT
+```
+
+### Check the model type
+```{r}
+FIT$modelType
+```
+
+#### Obtain the coefficient names
+```{r}
+FIT$coefnames
+```
+
+
+The results above shows that we have run K-Nearest Neighbors with 2 samples and 6 predictors. We used cross validation where ten folds were used and repeated three times. This means that the data is divided into ten folds and only nine folds are used in model estimation and one fold is used for model assessment and validation. From the model RMSE was used to select the optimal model using the smallest value. The final value used for the model was k = 2.
+
+### Plot the model
+```{r}
+plot(FIT, xlab = "Nearest Neighbors", main = "APlot of Root Mean Square Error (RMSE) for the K-Nearest Neighbors")
+```
+
+### View the Model
+```{r}
+FIT
+```
+
+The graph above shows that lowest value of RMASE is found when we have k as 3. After that point, the value of RMASE starts to increase steadily. 
+
+### Variable Importance
+```{r}
+varImp(FIT)
+```
+
+### Plot variable importance
+```{r}
+plot(varImp(FIT), xlab = "Percentage Importance", 
+     ylab ="Variables", main = "Variable Importance for the KNN Model")
+```
+
+
+The output above variables importance in our model from the most important one to the least. The variable "chas" has significant importance in our knn model. In other words, "chas" is the least important variable. 
+
+### Prediction
+```{r}
+pred <- predict(FIT, newdata = test_data)
+```
+
+### NOTE
+Because the response variable numeric and continuous, we will calculate the root mean square for assessment. 
+```{r}
+RMSE(pred, test_data$MPG)
+```
+
+### Make the Plot
+```{r}
+plot(pred, test_data$MPG)
+```
+
+### We can chooce R-square for Model Evaluation
+```{r}
+FIT <- train(MPG~GallonsPer100Miles+Cylinders + Displacement100ci + Horsepower100 + Weight1000lb + Seconds0to60, 
+             data = test_data,
+             tuneGrid = expand.grid(k=1:70),
+             method = 'knn',
+             metric = 'Rsquared',
+             trControl = trControl,
+             preProc = c('center', 'scale'))
+```
+
+
+### Model Performance
+```{r}
+FIT
+```
+
+```{r}
+plot(FIT)
+```
+
+### Variables Importance
+```{r}
+varImp(FIT)
+```
+
+### Plot variable Importance
+```{r}
+plot(varImp(FIT), xlab = "Percentage Importance", 
+     ylab ="Variables", main = "Variable Importance for the KNN Model")
+```
+
+
+### Prediction
+```{r}
+pred_knn <- predict(FIT, newdata = test_data)
+test_data <- data.frame(test_data, pred_knn)
+head(test_data,5)
+```
+
+### Check the Structure of the Data Set
+```{r}
+str(test_data)
+```
+
+### Plot the Actual Response Variable and Predicted Values
+```{r}
+library(ggplot2)
+library(ggthemes)
+# Combine data into a data frame
+data2 <- data.frame(Actual_MPG = test_data$MPG, Predicted_MPG = test_data$pred_knn)
+
+# Create line plot
+ggplot(data2, aes(x = 1:nrow(data2))) +
+  geom_line(aes(y = Actual_MPG, color = "Actual MPG")) +
+  geom_line(aes(y = Predicted_MPG, color = "Predicted MPG")) +
+  scale_color_manual(name = "Variable", values = c("Actual MPG" = "blue", "Predicted MPG" = "red")) +
+  labs(x = "Time Axis", y = "MPG", title = "Actual vs Predicted MPG") +
+  theme_economist()
+
+```
+
+
+### NOTE
+Because the response variable numeric and continuous, we will calculate the root mean square for assessment. 
+```{r}
+RMSE(pred_knn, data2$Actual_MPG)
+```
+
+### Make the Plot
+```{r}
+plot(pred_knn, data2$Actual_MPG, xlab = "Prediction", ylab = "mpg", main = "The scatter plot of predicted and actual mpg")
+```
+
+
+### No Much Improvement.
+Interpreting a k-Nearest Neighbors (k-NN) regression model is somewhat different from interpreting a traditional linear regression model. In k-NN regression, instead of fitting a mathematical equation to your data, the model makes predictions based on the values of the k nearest data points in the training dataset. Here's how you can interpret a k-NN regression model:
+
+## Prediction Process:
+For each data point you want to predict, the k-NN algorithm identifies the k nearest data points in the training dataset based on some distance metric (e.g., Euclidean distance).
+It then calculates the average (or weighted average) of the target values (the values you're trying to predict) for those k nearest data points.
+This average is used as the prediction for the new data point.
+Tuning Parameter (k):
+
+The most important parameter in k-NN regression is "k," which represents the number of nearest neighbors to consider. A small k (e.g., 1 or 3) may result in a model that closely follows the training data but is sensitive to noise. A large k (e.g., 10 or more) may result in a smoother prediction surface but might not capture local variations. The choice of k should be based on cross-validation and the characteristics of your data.
+
+### Distance Metric:
+The choice of distance metric (e.g., Euclidean, Manhattan, etc.) can impact the model's performance. Different distance metrics can lead to different interpretations of "closeness" among data points.
+
+### Non-Linearity:
+Unlike linear regression, k-NN regression can capture non-linear relationships in the data. Interpretation may not involve coefficients or slope values as in linear regression.
+
+### Local vs. Global Patterns:
+k-NN regression captures local patterns in the data. Interpretation involves understanding the local behavior around a prediction point. The model does not provide a global equation that describes the entire dataset.
+
+### Visualizations:
+Visualizations can be helpful for interpretation. Plotting the k nearest neighbors for specific data points can provide insights into why the model made a particular prediction.
+
+### Feature Importance:
+k-NN does not provide feature importance scores like some other models (e.g., Random Forest or Gradient Boosting). However, you can still analyze feature importance indirectly by examining which features are most influential in determining the nearest neighbors.
+
+### Performance Metrics:
+Use appropriate regression evaluation metrics like Mean Absolute Error (MAE), Mean Squared Error (MSE), or R-squared to assess model performance. These metrics can give you a sense of how well the k-NN regression model fits the data.
+
+### Rescaling Features:
+Scaling and normalization of features can significantly affect the results, as k-NN is sensitive to the scale of input variables. Interpretation may involve considering the effects of feature scaling. In summary, interpreting a k-NN regression model involves understanding its prediction process, the choice of hyperparameters (especially k), the impact of distance metrics, and the local nature of the model's predictions. Visualizations and performance metrics play a crucial role in assessing and explaining the model's behavior on your specific dataset.
+
+
+## K-Nearest Neighbors
+In k-Nearest Neighbors (k-NN) regression, accuracy is not typically used as an evaluation metric because k-NN regression is a type of regression, not classification. Accuracy is more suitable for classification problems where you're predicting discrete class labels.
+
+For regression tasks, you typically use different evaluation metrics to assess the performance of your model. Common metrics for regression tasks include:
+
+### Mean Absolute Error (MAE): 
+It measures the average absolute difference between the predicted and actual values. It is less sensitive to outliers compared to Mean Squared Error.
+
+### Mean Squared Error (MSE): 
+It measures the average of the squared differences between predicted and actual values. It gives higher weight to larger errors.
+
+### Root Mean Squared Error (RMSE): 
+It is the square root of the MSE and provides an interpretable measure of the average error in the same units as the target variable.
+
+### R-squared (R2): 
+It measures the proportion of the variance in the dependent variable that is predictable from the independent variables. A higher R-squared indicates a better fit.
+
+## Support Vector Machine (Support Vector Regressor)
+Support Vector Regressor (SVR) is a supervised machine learning algorithm used for regression tasks. It's based on the concept of Support Vector Machines (SVMs) typically used for classification problems. Here's how SVR works:
+
+### Objective:
+
+The goal of SVR is to find a hyperplane (in high dimensional space for non-linear cases) that best fits the training data while minimizing the prediction error. This hyperplane minimizes the distance to the closest data points, called support vectors. Unlike linear regression, SVR allows for a certain margin of error around the hyperplane.
+
+### Key Points:
+
+#### Non-linearity: 
+SVR can handle non-linear relationships between features and target variables using kernel functions. These functions project the data into a higher-dimensional space where a linear relationship might exist.
+
+#### Robustness: 
+SVR is less sensitive to outliers compared to some other regression methods. This is because it focuses on the support vectors rather than being influenced by all data points equally.
+
+#### Regularization: 
+SVR inherently performs regularization by controlling the margin of error around the hyperplane. This helps to prevent overfitting.
+R code for Support Vector Regression with kernlab package
+
+#### 1. Install and Load Packages:
+```{r}
+# Install kernlab package if not already installed
+if(!require(kernlab)) install.packages("kernlab")
+library(kernlab)
+```
+
+### 2. Prepare Data:
+
+* Split your data into training and testing sets.
+
+* Ensure your target variable is numeric.
+
+```{r}
+set.seed(16)
+ind <- sample(2, nrow(data), replace = T, prob = c(0.8, 0.2))
+
+train_data <- data[ind == 1, ]
+test_data <- data[ind == 2, ]
+```
+
+### 3. Define SVR Model
+```{r}
+library(caret)
+model_svm <- train(
+  MPG~GallonsPer100Miles+Cylinders + Displacement100ci + Horsepower100 + Weight1000lb + Seconds0to60, 
+             data = train_data,
+  method = 'svmRadial',
+  preProcess = c("center", "scale"),
+  trCtrl = trainControl(method = "none")
+)
+model_svm
+```
+
+### Again, to find R square and RMSE for test data
+```{r}
+pred_tr_svm <- predict(model_svm, train_data)
+pred_tst_svm <- predict(model_svm, test_data)
+
+fit_ind_tr_svm <- data.frame(
+  R2 = R2(pred_tr_svm, train_data$MPG),
+  RMSE = RMSE(pred_tr_svm, train_data$MPG)
+)
+
+fit_ind_tst_svm <- data.frame(
+  R2 = R2(pred_tst_svm, test_data$MPG),
+  RMSE = RMSE(pred_tst_svm, test_data$MPG)
+)
+```
+
+### Comparison table of test & train data
+```{r}
+data.frame(
+  Model = c("SVM Train", "SVM Test"),
+  R2 = c(fit_ind_tr_svm$R2, fit_ind_tst_svm$R2),
+  RMSE = c(fit_ind_tr_svm$RMSE, fit_ind_tst_svm$RMSE)
+)
+```
+
+R-square for test data of SVM model is 0.9309281 which means that independent variables are able to explain 93.09281% of variance in dependent variable on test data. Here, the difference between RMSE & R-square is less than 5 percent difference so we can say that there is no over-fitting or under-fitting in the model.
+
+## Cross Vaildations
+### Leave One Our Cross Validation
+Leave-One-Out Cross Validation (LOOCV) is a technique used to estimate the performance of a machine learning model. Here's a breakdown of how it works:
+
+### 1. Individual Removal:
+LOOCV iterates through your entire dataset one sample at a time.
+For each iteration, it removes a single sample from the dataset. This removed sample becomes the "test set" for that particular iteration.
+
+### 2. Model Training:
+The remaining data points (all except the removed sample) become the "training set".
+The model is then trained using this training set.
+
+### 3. Prediction and Evaluation:
+Once the model is trained, it's used to predict the value of the target variable for the removed "test set" sample.
+This prediction is compared to the actual value of the target variable in the removed sample.
+The error between the predicted and actual value is calculated (e.g., squared error for regression).
+
+### 4. Repetition and Averaging:
+This process of removing a sample, training the model, predicting, and calculating error is repeated for every single sample in the dataset.
+Each sample gets a chance to be the "test set" once.
+Finally, the errors from all iterations are averaged to obtain a single estimate of the model's performance on unseen data.
+
+```{r}
+tcr_loocv <- trainControl(method = "LOOCV")
+model_loocv <- train(
+  MPG~GallonsPer100Miles+Cylinders + Displacement100ci + Horsepower100 + Weight1000lb + Seconds0to60,
+  data = train_data, 
+  method="svmRadial", 
+  trControl = tcr_loocv)
+
+pred_tst_loocv <- predict(model_loocv, test_data)
+
+fit_ind_tst_loocv <- data.frame(
+  R2 = R2(pred_tst_loocv, test_data$MPG),
+  RMSE = RMSE(pred_tst_loocv, test_data$MPG)
+)
+```
+
+### Train model data & test model data
+```{r}
+print(model_loocv)
+```
+
+```{r}
+fit_ind_tst_loocv
+```
+
+## K-folds Cross Validation
+K-Fold Cross Validation (K-Fold CV) and Repeated K-Fold Cross Validation (Repeated K-Fold CV) are both techniques used to evaluate the performance of machine learning models. They share some similarities but also have key differences:
+
+### K-Fold Cross Validation:
+### Data Splitting: 
+K-Fold CV splits the data into k folds (groups) of (almost) equal size. A common choice for k is 10.
+
+### Iteration: 
+The following steps are repeated k times:
+One fold is chosen as the test set for evaluation.
+The remaining k-1 folds are combined to form the training set.
+The model is trained on the training set.
+The trained model is used to make predictions on the test set.
+The performance of the model is evaluated using a metric like accuracy, error rate, or AUC (for classification) or R-squared, RMSE (for regression).
+Performance Estimation: The performance metrics from all k iterations are averaged to obtain a final estimate of the model's generalizability (performance on unseen data).
+
+| Feature                                |	LOOCV	                                  |                     K-Fold CV|
+|----------------------------------------|------------------------------------------|------------------------------|
+|Data Splitting	                         |n folds (n samples)	                      |      k folds (equal size)    |
+|Iterations	                             |n	                                        |                k             |
+|Computational Cost	                     | High (n model trainings)                 |  	Lower (k model trainings)  |
+|Performance Estimate	                   |Can be pessimistic                        | 	Less variance              |
+|Common Use Cases	                       |Small datasets, understanding concepts	  |Most practical scenarios      |
+
+```{r}
+tcr_cv <- trainControl(method = "cv", number = 10)
+model_cv <- train(
+  MPG~GallonsPer100Miles+Cylinders + Displacement100ci + Horsepower100 + Weight1000lb + Seconds0to60,
+  data = train_data, 
+  method="svmRadial", 
+  trControl = tcr_cv)
+
+pred_tst_cv <- predict(model_cv, test_data)
+
+fit_ind_tst_cv <- data.frame(
+  R2 = R2(pred_tst_cv, test_data$MPG),
+  RMSE = RMSE(pred_tst_cv, test_data$MPG)
+)
+```
+
+### View the Model
+```{r}
+model_cv
+```
+
+### View the accuracy on the Testing Data
+```{r}
+fit_ind_tst_cv
+```
+
+## Repeated K-fold Cross Validation
+Repeated K-Fold Cross Validation:
+
+Outer Loop: Repeated K-Fold CV introduces an additional outer loop that repeats the entire K-Fold CV process r times (e.g., r = 3).
+Inner K-Fold CV: Within each outer loop iteration, the regular K-Fold CV procedure (described above) is performed with the chosen value of k.
+Performance Aggregation: After completing all r x k iterations, the performance metrics are collected and potentially averaged across all folds and repetitions.
+Key Differences:
+
+Number of Iterations: K-Fold CV iterates k times, while Repeated K-Fold CV iterates k times within each outer loop repetition (r times).
+Variance Reduction: Repeated K-Fold CV aims to reduce the variance of the performance estimate obtained from a single run of K-Fold CV. Different data splits in K-Fold CV can lead to slightly different performance estimates. By repeating the process multiple times, Repeated K-Fold CV provides a more stable estimate.
+Computational Cost: Repeated K-Fold CV is computationally more expensive than K-Fold CV due to the additional outer loop repetitions.
+Choosing Between Them:
+
+K-Fold CV: A good starting point for most cases. It's simpler to implement and less computationally expensive.
+Repeated K-Fold CV: Consider using it if:
+You suspect high variance in the performance estimates from K-Fold CV.
+You have sufficient computational resources.
+In summary, K-Fold CV provides a basic and efficient way to evaluate model performance. Repeated K-Fold CV adds an extra layer of stability by averaging performance estimates from multiple K-Fold CV runs.
+
+\newpage
+
+| Feature                         | K-Fold Cross Validation                                                                | Repeated K-Fold Cross Validation                                                                               |
+|---------------------------------|----------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------|
+| Definition                      | Divides the dataset into k subsets                                                     | Similar to k-fold, but the process is repeated multiple times with different random splits of the data         |
+| Number of Iterations            | One iteration                                                                          | Multiple iterations (repeats)                                                                                  |
+| Randomization                   | Typically, data is shuffled once and divided into k folds                              | Randomization occurs multiple times, creating new random splits for each iteration                             |
+| Variability Reduction           | Provides a single estimate of model performance                                        | Reduces variability by averaging performance metrics over multiple iterations                                  |
+| Performance Estimation          | Estimates model performance based on one split of the data                             | Provides more robust estimates of model performance by averaging over multiple splits                          |
+| Computationally Expensive       | Less computationally expensive compared to repeated k-fold                             | More computationally expensive due to multiple iterations, especially with large datasets                      |
+| Use Cases                       | Suitable for initial model evaluation or when computational resources are limited      | Recommended when a more reliable estimate of model performance is required, or when dealing with small datasets|
+| Implementation                  | Can be easily implemented using built-in functions in most machine learning libraries  | Implementation may require custom code or specialized functions that support repeated cross-validation         |
+
+
+```{r}
+tcr_cv <- trainControl(method = "repeatedcv", number = 10, repeats=3)
+model_rep_cv <- train(
+  MPG~GallonsPer100Miles+Cylinders + Displacement100ci + Horsepower100 + Weight1000lb + Seconds0to60,
+  data = train_data, 
+  method="svmRadial", 
+  trControl = tcr_cv)
+
+pred_tst_rep_cv <- predict(model_rep_cv, test_data)
+
+fit_ind_tst_rep_cv <- data.frame(
+  R2 = R2(pred_tst_rep_cv, test_data$MPG),
+  RMSE = RMSE(pred_tst_rep_cv, test_data$MPG)
+)
+```
+
+### View the Model
+```{r}
+model_rep_cv
+```
+
+### View the Accuracy on the Testing Data
+```{r}
+fit_ind_tst_rep_cv
+```
+
+### Compare the three Models
+```{r}
+fit_indices_table <- data.frame(
+  Model = c("SVM", "LOOCV", "k-fold CV", "Repeated k-fold CV"),
+  R2 = c(fit_ind_tst_svm$R2, fit_ind_tst_loocv$R2, fit_ind_tst_cv$R2, fit_ind_tst_rep_cv$R2),
+  RMSE = c(fit_ind_tst_svm$RMSE, fit_ind_tst_loocv$RMSE, fit_ind_tst_cv$RMSE, fit_ind_tst_rep_cv$RMSE)
+)
+
+fit_indices_table
+```
+
+### The best model is
+```{r}
+best_model <- fit_indices_table[which.max(fit_indices_table$R2), ]
+best_model
+```
+
+Hence, the best model is Leave Out One Cross Validation (LOOCV) and can be used for better prediction results.
+
+### 4. Make Predictions:
+
+```{r}
+pred_tst_loocv <- predict(model_loocv, test_data)
+```
+
+```{r}
+# Combine data into a data frame
+data3 <- data.frame(Actual_MPG = test_data$MPG, Predicted_MPG = pred_tst_loocv)
+head(data3,15)
+```
+
+### 5. Plot the Predicted and Actual MPG
+
+```{r}
+# Create line plot
+ggplot(data3, aes(x = 1:nrow(data3))) +
+  geom_line(aes(y = Actual_MPG, color = "Actual MPG")) +
+  geom_line(aes(y = Predicted_MPG, color = "Predicted MPG")) +
+  scale_color_manual(name = "Variable", values = c("Actual MPG" = "blue", "Predicted MPG" = "red")) +
+  labs(x = "Time Axis", y = "MPG", title = "Actual vs Predicted MPG") +
+  theme_economist()
+```
+
+This predicts the target variable for your testing data (test_data).
+
+

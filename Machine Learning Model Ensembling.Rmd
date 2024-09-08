@@ -1,0 +1,438 @@
+---
+title: "MACHINE LEARNING; MODEL ENSEMBLING WITH R"
+author: "Lumumba Wandera Victor"
+date: "2024-04-26"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, comment = NA, 
+                      fig.height = 5, fig.width = 6)
+```
+
+## MODEL ENSEMBLING METHOD (Using superlearner library in R)
+
+### Ensemble Learning in R with SuperLearner
+Boost your machine learning results and discover ensembles in R with the SuperLearner package: learn about the Random Forest algorithm, bagging, and much more!
+
+Did you ever want to build a machine learning ensemble, but did not know how to get started? This tutorial will help you on your way with SuperLearner. This R package provides you with an easy way to create machine learning ensembles with the use of high level functions by offering a standardized wrapper to fit an ensemble using popular R machine learing libraries such as glmnet, knn, randomForest and many more!
+
+### In this tutorial, you'll tackle the following topics:
+
+* What are Ensembles? Go over a short definition of ensembles before you start tackling the practical example that this tutorial offers!
+
+* Why SuperLearner and what does this package actually do?
+
+* Ensemble Learning in R with SuperLearner: in this section, you'll learn how to install the packages you need, prepare the data and create your first ensemble model! You'll also see how you can train the mode and make predictions with it. In doing so, you'll cover Kernel Support Vector Machines, Bayes Generalized Linear Models and Bagging. Lastly, you'll see how you can tune the hyperparameters to further improve your model's performance!
+
+When you are finished, you will have fit your first ensemble, predicted new data and tuned parts of the ensemble.
+
+## What are Ensembles?
+All this is awesome, but what exactly is an ensemble?
+
+An ensemble occurs when the probability predictions or numerical predictions of multiple machine models are combined by averaging, weighting each model and adding them together or using the most common observation between models. This provides a multiple vote scenario that is likely to drive a prediction to the correct class or closer to the correct number in regression models. Ensembles tend to work best when there are disagreements between the models being fit. The concept of combining multiple models also seems to perform well in practice, often above implementations of single algorithms.
+
+Ensembles can be created manually by fitting multiple models, predicting with each of them and then combining them.
+
+### Why SuperLearner?
+Now that you have seen what ensembles are, you might ask yourself what the SuperLearner library exactly does. Well, simply put, SuperLearner is an algorithm that uses cross-validation to estimate the performance of multiple machine learning models, or the same model with different settings. It then creates an optimal weighted average of those models, which is also called an “ensemble”, using the test data performance.
+
+### But why would you use SuperLearner?
+
+Even though you'll learn more about the power of this R package throughout the tutorial, you could already consider this list of advantages:
+
+* SuperLearner allows you to fit an ensemble model by simply adding algorithms. 
+
+* As you already read before, SuperLearner uses cross-validation, which is inherently used to estimate risk for all models. This makes SuperLearner great for model comparison! 
+
+* SuperLearner makes ensembling efficient by automatically estimating the weights of the ensemble. This is normally a task that can be very tedious and requires a lot of experimentation.
+
+SuperLearner automatically removes models that do not contribute to the ensemble prediction power, this leaves you free to experiment with numerous algorithms!
+
+Let's take a look at the process to use SuperLearner.
+
+### Ensemble Learning in R with SuperLearner
+
+#### Install the SuperLearner Package
+SuperLearner can be installed from CRAN with the install.packages() function and then loaded into your workspace using the library() function:
+
+```{r}
+### Install the package
+#install.packages("SuperLearner")
+
+# Load the packages required
+library("SuperLearner")
+library(ISLR2)
+library(MASS)
+library(caret)
+library(splines)
+library(pROC)
+library(rattle)
+library(ggplot2)
+library(devtools)
+library(predict3d)
+library(psych)
+library(dplyr)
+library(gtsummary)
+library(DescTools)
+library(nortest) 
+library(lmtest)
+library(sandwich)
+library(sjmisc)
+library(ggplot2)
+library(stargazer)
+```
+
+### Prepare your Data
+To illustrate SuperLearner, you will use the Pima Indian Women data set from the MASS package. The MASS package contains a training set, which is used for training a model and a test set, which is used for assessing the performance of the model on unseen data. The data set provides some descriptive factors about the Pima Indian Women such as number of pregnancies and age and whether or not they have diabetes. The purpose of the data set is to try to predict diabetes.
+
+The type column is the column that indicates the presence of diabetes. It is a binary Yes or No column, which means that it follows a binomial distribution.
+
+Note that, without getting too theoretical, a binomial distribution is a collection of Bernoulli trials, which are a success or failure test in probability. A binomial distribution is easily identified because there are only two possible responses, in this case Yes or No. Why are you getting into this? Well, SuperLearner requires you to define the family of problem your model should belong to. You will see that in more detail when you fit the model later in this tutorial.
+
+```{r}
+# Get the `MASS` library
+library(MASS)
+# Train and test sets
+train <- Pima.tr
+test <- Pima.te
+
+# Print out the first lines of `train`
+head(train)
+```
+
+### Get a summary of train
+```{r}
+knitr::kable(
+  describeBy(train[]) %>% round(2) 
+)
+```
+
+Tip: if you want to have more information on the variables of this data set, use the help() function, just like here:
+```{r}
+ help(Pima.tr)
+```
+
+## Diabetes in Pima Indian Women
+### Description
+A population of women who were at least 21 years old, of Pima Indian heritage and living near Phoenix, Arizona, was tested for diabetes according to World Health Organization criteria. The data were collected by the US National Institute of Diabetes and Digestive and Kidney Diseases. We used the 532 complete records after dropping the (mainly missing) data on serum insulin.
+
+By running the above command, you can derive that the type column indicates diabetes.
+
+SuperLearner also requires the response variable to be encoded if it is a classification problem. Since you are solving a binomial classification problem, you will encode the factor for the variable type to 0-1 encoding:
+
+```{r}
+y <- as.numeric(train[,8])-1
+ytest <- as.numeric(test[,8])-1
+```
+
+Since the type column was a factor, R will encode it to 1 and 2, but this is not what you want: ideally, you would like to work with the type encoded as 0 and 1, which are "No" and "Yes", respectively. In the above code chunk, you subtract 1 from the whole set to get your 0-1 encoding. R will also encode this in the factor order.
+
+The package also requires that the predictors (X) and responses (Y) to be in their own data structures. You split out Y above, now you need to split out X. You will go ahead and split out your test set as well:
+
+```{r}
+x <- data.frame(train[,1:7])
+xtest <- data.frame(test[,1:7])
+```
+
+Note that some algorithms do not just require a data frame, but would require a model matrix saved as a data frame. An example is the nnet algorithm. When solving a regression problem, you will almost always use the model matrix to store your data for SuperLearner. All a model matrix does is split out factor variables into their own columns and recodes them as 0-1 values instead of text values. It does not impact numerical columns. The model matrix will increase the number of columns an algorithm has to deal with, therefore it could increase computational time. For a small data set, such as this, there is minimal impact, but larger data sets could be heavily affected. The moral of the story is to decide which algorithms you will want to try before fitting your model. For this simple example, you will just use the data frame for the existing data structure.
+
+## Your First Ensemble Model with SuperLearner
+To start creating your first model, you can use the following command to preview what models are available in the package:
+
+```{r}
+listWrappers()
+```
+
+You will notice there are prediction algorithm wrappers and screening algorithm wrappers. There are some popular libraries in here that can be used for either classification, regression or both. The screening algorithms are used for automated variable selection by SuperLearner.
+
+When you want to use an algorithm from the above list, you'll need to have the package installed in your environment. That's because SuperLearner is really calling these packages and then fitting the models when the method is used. That also means that if you never use the method SL.caret, for example, you do not need to have the caret package installed.
+
+Fitting the model is simple, but you'll go through this step-by-step with a single model example.
+
+You will fit the Ranger algorithm, which is a faster implementation of the famous Random Forest.
+
+Remember that a Random Forest is a powerful method which is actually an ensembling of decision trees. Decision trees work by observing your data and calculating a probability split between each variable in the model, giving you a pathway to your prediction. Decision trees have a habit of overfitting to their data, which means they do not generalize well to new data. Random Forest solves this problem by growing multiple decision trees based on numerous samples of data and then averages those predictions to find the correct prediction. It also only selects a subset of the features for each sample, which is how it differs from tree bagging. This creates a model that is not overfitting the data. Cool, right?
+
+In this case, it could be that you first need to install the ranger library with install.packages() function before you can start fitting the model.
+
+If you have done that, you can continue and use SL.ranger in the SuperLearner() function.
+
+Since Random Forest -and therefore Ranger- contain random sampling in the algorithm, you will not get the same result if you fit it more than once. Therefore, for this exercise, you will set the seed so you can reproduce the examples and also compare multiple models on the same random seed baseline. R uses set.seed() to set the random seed. The seed can be any number, in this case, you will use 150.
+
+```{r}
+set.seed(150)
+single.model <- SuperLearner(y,
+                             x,
+                             family=binomial(),
+                             SL.library=list("SL.ranger"))
+```
+
+### Code Explanation
+In this code snippet, the set.seed() function is used to set a seed value for the random number generator.
+• This ensures that the results obtained from the analysis are reproducible.
+• The SuperLearner() function is then used to fit a super learner model to the data.
+• The y argument specifies the response variable, while the x argument specifies the predictor variables.
+• The family argument is set to binomial() to indicate that the response variable is binary.
+• The SL.library argument is used to specify the library of base learners to be used in the super learner model.
+• In this case, only one base learner, SL.ranger, is specified.
+• Overall, this code fits a super learner model to the data using the SL.ranger base learner and a binomial family.
+
+
+SuperLearner requires a Y variable, which is the response or outcome you want, an X variable, which are the predictor variables, the family to use, which can be guassian or binomial and the library to use in the form of a list. That's SL.ranger in this case.
+
+Do you remember the whole binomial distribution discussion that you read about earlier? Now, you see why you needed to know that: using the gaussian model would not have yielded proper predictions in your 0-1 range.
+
+Next, simply printing the model provides the coefficient, which is the weight of the algorithm in the model and the risk factor which is the error the algorithm produces. Behind the scenes, the package fits each algorithm used in the ensemble to produce the risk factor.
+
+```{r}
+single.model
+```
+
+### Summary of the Model
+```{r}
+summary(single.model)
+```
+
+In this case, your risk factor is less than 0.20. Of course, this will need to be tested through external cross validation and in the test set, but it is a good start. The beauty of SuperLearner is that it tries to automatically build an ensemble through the use of cross validation. Of course, if there is only one model, then it gets the full weight of the ensemble. So this single model is great, but you can do this without SuperLearner. How can you fit ensemble models?
+
+### Training an Ensemble with R: Kernel Support Vector Machines, Bayes GLM and Bagging
+Ensembling with SuperLearner is as simple as selecting the algorithms to use. In this case, let's add Kernel Support Vector Machines (KSVM) from the kernlab package, Bayes Generalized Linear Models (GLM) from the arm package and bagging from the ipred package.
+
+### But what are KSVM and Bayes GLM?
+
+The KSVM uses something called "the kernel trick" to calculate distance between points. Instead of having to draw a map of the features and calculate coordinates, the kernel method calculates the inner products between points. This allows for faster computation. Then the support vector machine is used to learn the non-linear boundary between points in classification. A support vector machine attempts to create a gap between two classes in a machine learning problem that is often nonlinear. It then classifies new points on either side of that gap based on where they are in space.
+
+The Bayes GLM model is simply an implementation of logistic regression. At least in this case, where you are classifying a 0-1 problem. Bayes GLM differs from KSVM in that it uses an augmented regression algorithm to update the coefficients at each step. Bagging is similar to random forest above without subsetting the features. This means that you will grow multiple decision trees from random samples and average them together to get your prediction.
+
+Now let's fit your first ensemble!
+
+Tip: don't forget to install these packages if you don't have them yet! Additionally, you might also be prompted to install other required packages.
+
+```{r}
+     # Set the seed
+    set.seed(150)
+
+    # Fit the ensemble model
+    model <- SuperLearner(y,
+                          x,
+                          family=binomial(),
+                          SL.library=list("SL.ranger",
+                                          "SL.ksvm",
+                                          "SL.ipredbagg",
+                                          "SL.bayesglm"))
+
+    # Return the model
+    model
+```
+
+Adding these algorithms improved your model and changed the landscape. KVSM has a coefficient of zero, which means that it is not weighted as part of the ensemble anymore. Bayes GLM, Ranger and Bagging make up the rest of the weight of the model. You will notice SuperLearner is calculating this risk for you and deciding on the optimal model mix that will reduce the error.
+
+To understand each model's specific contribution to the model and the variation, you can use SuperLearner's internal cross-validation function CV.SuperLearner(). To set the number of folds, you can use the V argument. In this case, you will set it to 5:
+
+```{r}
+     # Set the seed
+    set.seed(150)
+
+    # Get V-fold cross-validated risk estimate
+    cv.model <- CV.SuperLearner(y,
+                                x,
+                                V=5,
+                                SL.library=list("SL.ranger",
+                                                "SL.ksvm",
+                                                "SL.ipredbagg",
+                                                "SL.bayesglm"))
+
+    # Print out the summary statistics
+    summary(cv.model)
+```
+
+### Code explanation
+This code snippet is showing the results of a cross-validation analysis using the SuperLearner package in R.
+• The CV.SuperLearner() function is called with the following arguments: Y = y: the response variable, y X = x: the predictor variables, x V = 5: the number of folds used in the cross-validation analysis SL.library = list("SL.ranger", "SL.ksvm", "SL.ipredbagg", "SL.bayesglm"): a list of the algorithms to be included in the SuperLearner ensemble.
+• In this case, the algorithms are SL.ranger, SL.ksvm, SL.ipredbagg, and SL.bayesglm.
+• The output shows the risk estimates for each algorithm, as well as the overall SuperLearner ensemble.
+• The risk is based on mean squared error, and all risk estimates are based on 5 folds.
+• The table shows the average risk estimate (Ave), the standard error (se), the minimum risk estimate (Min), and the maximum risk estimate (Max) for each algorithm.
+
+The summary of cross validation shows the average risk of the model, the variation of the model and the range of the risk. Plotting this also produces a nice plot of the models used and their variation:
+
+```{r}
+plot(cv.model)
+```
+
+It's easy to see that Bayes GLM performs the best on average while KSVM performs the worst and contains a lot of variation compared to the other models. The beauty of SuperLearner is that, if a model does not fit well or contribute much, it is just weighted to zero! There is no need to remove it and retrain unless you plan on retraining the model in the future. Just remember that proper model training involves cross validation of the entire model. In a real-world setting, that is how you would determine the risk of the model before predicting new data.
+
+### Make Predictions with SuperLearner
+With the specific command predict.SuperLearner() you can easily make predictions on new data sets. That means that you can not use the normal predict() function!
+
+```{r}
+predictions <- predict.SuperLearner(model, newdata=xtest)
+```
+
+The function predict.SuperLearner() takes a model argument (a SuperLearner fit model) and new data to predict on. Predictions will first return the overall ensemble predictions:
+
+```{r}
+head(predictions$pred)
+```
+
+It will also return the individual library predictions:
+
+```{r}
+head(predictions$library.predict)
+```
+
+This allows you to see how each model classified each observation. This could be useful in debugging the model or fitting multiple models at once to see which to use further.
+
+You may have noticed the prediction quantities being returned. They are in the form of probabilities. That means that you will need a cut off threshold to determine if you should classify a one or zero. This only needs to be done in the binomial classification case, not regression.
+
+Normally, you would determine this in training with cross-validation, but for simplicity, you will use a cut off of 0.50. Since this is a simple binomial problem, you will use dplyr's ifelse() function to recode your probabilities:
+
+```{r}
+# Load the package
+library(dplyr)
+
+# Recode probabilities
+conv.preds <- ifelse(predictions$pred>=0.5,1,0)
+```
+
+Now you can build a confusion matrix with caret to review the results:
+
+```{r}
+# Load in `caret`
+library(caret)
+conv.preds <- as.factor(as.vector(conv.preds))
+ytest <- as.factor(as.vector(ytest))
+
+# Create the confusion matrix
+cm <- confusionMatrix(conv.preds, ytest)
+
+# Return the confusion matrix
+cm
+```
+
+### Ensemble kNN, SVM, Random Forest, Extreme Gradient Boosting and Logisting Regression
+```{r}
+# Set the seed
+set.seed(150)
+
+    # Get V-fold cross-validated risk estimate
+cv.model <- CV.SuperLearner(y,
+                            x,
+                            V=5,
+                            SL.library=list("SL.ranger",
+                                            "SL.randomForest",
+                                            "SL.xgboost",
+                                            "SL.ksvm",
+                                            "SL.ipredbagg",
+                                            "SL.bayesglm",
+                                            "SL.glmnet",
+                                            "SL.knn"))
+
+    # Print out the summary statistics
+summary(cv.model)
+```
+
+
+```{r}
+plot(cv.model)
+```
+
+It's easy to see that Bayes GLM performs the best on average while KSVM performs the worst and contains a lot of variation compared to the other models. The beauty of SuperLearner is that, if a model does not fit well or contribute much, it is just weighted to zero! There is no need to remove it and retrain unless you plan on retraining the model in the future. Just remember that proper model training involves cross validation of the entire model. In a real-world setting, that is how you would determine the risk of the model before predicting new data.
+
+```{r}
+# Set the seed
+set.seed(150)
+
+    # Get V-fold cross-validated risk estimate
+model <- SuperLearner(y,
+                          x,
+                          family=binomial(),
+                          SL.library=list("SL.ranger",
+                                            "SL.randomForest",
+                                            "SL.xgboost",
+                                            "SL.ksvm",
+                                            "SL.ipredbagg",
+                                            "SL.bayesglm",
+                                            "SL.glmnet",
+                                            "SL.knn"))
+```
+## Summary of the Model
+```{r}
+model
+```
+
+### Make Predictions with SuperLearner
+With the specific command predict.SuperLearner() you can easily make predictions on new data sets. That means that you can not use the normal predict() function!
+
+```{r}
+predictions <- predict.SuperLearner(model, newdata=xtest)
+```
+
+The function predict.SuperLearner() takes a model argument (a SuperLearner fit model) and new data to predict on. Predictions will first return the overall ensemble predictions:
+
+```{r}
+head(predictions$pred)
+```
+
+It will also return the individual library predictions:
+
+```{r}
+head(predictions$library.predict)
+```
+
+This allows you to see how each model classified each observation. This could be useful in debugging the model or fitting multiple models at once to see which to use further.
+
+You may have noticed the prediction quantities being returned. They are in the form of probabilities. That means that you will need a cut off threshold to determine if you should classify a one or zero. This only needs to be done in the binomial classification case, not regression.
+
+Normally, you would determine this in training with cross-validation, but for simplicity, you will use a cut off of 0.50. Since this is a simple binomial problem, you will use dplyr's ifelse() function to recode your probabilities:
+
+```{r}
+# Load the package
+library(dplyr)
+
+# Recode probabilities
+conv.preds <- ifelse(predictions$pred>=0.5,1,0)
+```
+
+Now you can build a confusion matrix with caret to review the results:
+
+```{r}
+# Load in `caret`
+library(caret)
+conv.preds <- as.factor(as.vector(conv.preds))
+ytest <- as.factor(as.vector(ytest))
+
+# Create the confusion matrix
+cm <- confusionMatrix(conv.preds, ytest)
+
+# Return the confusion matrix
+cm
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

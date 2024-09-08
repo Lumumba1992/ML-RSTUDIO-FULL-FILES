@@ -1,0 +1,48 @@
+---
+title: "Libraries for Malaria Modeling using Machine Learning Algorithms"
+author: "Lumumba Wandera Victor"
+date: "2024-04-03"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, comment = NA,
+                      fig.height = 4, fig.width = 8)
+```
+
+### Libraries for Malaria Modeling using Machine Learnings
+```{r}
+library(psych)
+library(caret)
+library(ggplot2)
+library(mlbench)
+library(mltools)
+library(caretEnsemble)
+library(tictoc)
+library(flextable)
+library(MASS)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

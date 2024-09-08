@@ -1,0 +1,3283 @@
+---
+title: "COMPARING THE PERFORMANCE OF VARIOUS CLASSIFICATION MODELS: APPLICATION OF MACHINE LEARNING ALGORITHMS"
+author: "Lumumba Wandera Victor"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+\newpage
+\tableofcontents
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE,comment = NA, message=FALSE,
+                      fig.height=4, fig.width=6)
+```
+
+# MACHINE LEARNING
+Machine learning (ML) is a subset of artificial intelligence (AI) that focuses on the development of algorithms and statistical models that enable computer systems to learn from and make predictions or decisions based on data. In other words, it's a field of study and practice where computers are trained to perform tasks without being explicitly programmed for each task.
+
+# SUPERVISED AND UNSUPERVISED LEARNING 
+Supervised learning and unsupervised learning are two fundamental categories of machine learning, each with its own distinct characteristics and use cases:
+
+## Supervised Learning:
+**Definition:**
+Supervised learning is a type of machine learning where the algorithm learns from labeled training data. It involves a clear relationship between input and output, where the model is trained to map input data to corresponding target labels.
+
+**Key Characteristics:**
+* The training data consists of pairs of input features (attributes or variables) and their corresponding target labels.
+* The goal is to learn a mapping function that can accurately predict the target label for new, unseen data based on the input features.
+* Supervised learning tasks include classification (predicting discrete labels) and regression (predicting continuous values).
+
+**Examples:**
+* Classification: Spam email detection, image recognition, sentiment analysis.
+* Regression: House price prediction, stock price forecasting, temperature prediction.
+
+**Evaluation Metrics:**
+* For classification: Accuracy, precision, recall, F1-score, ROC curve, etc.
+* For regression: Mean Absolute Error (MAE), Mean Squared Error (MSE), Root Mean Squared Error (RMSE), R-squared, etc.
+
+### Workflow:
+Data pre-processing, feature engineering, model selection, training, evaluation, and testing are common steps in a supervised learning pipeline.
+
+## Unsupervised Learning:
+**Definition:**
+Unsupervised learning is a type of machine learning where the algorithm learns from unlabeled data. It aims to discover patterns, structures, or relationships in the data without explicit guidance or target labels.
+
+**Key Characteristics:**
+* The training data does not contain labeled target information.
+* The primary objective is to explore the inherent structure within the data, such as clustering similar data points or reducing dimensionality.
+
+**Examples:**
+* Clustering: Grouping similar customer profiles for targeted marketing.
+* Dimensionality Reduction: Reducing the number of features while preserving essential information (e.g., Principal Component Analysis).
+
+**Evaluation Metrics:**
+Evaluation in unsupervised learning can be more challenging since there are no ground truth labels. Metrics depend on the specific task, such as silhouette score for clustering or explained variance ratio for dimensionality reduction.
+
+**Workflow:**
+* Data preprocessing, model selection, training, and evaluation are steps in an unsupervised learning pipeline.
+* Visualization and domain knowledge are often essential for interpreting results.
+
+## Semi-Supervised Learning:
+In addition to supervised and unsupervised learning, there is also a category known as semi-supervised learning, which combines elements of both. In semi-supervised learning, you have a small amount of labeled data and a larger amount of unlabeled data. The goal is to leverage both sources of information to build better models.
+
+In summary, supervised learning is about learning from labeled data to make predictions, unsupervised learning is about discovering patterns in unlabeled data, and semi-supervised learning combines elements of both to leverage labeled and unlabeled data for learning and prediction.
+
+
+
+# CLASSIFICATION
+Classification is a fundamental concept in machine learning that involves categorizing data into predefined classes or labels based on the features or attributes of the data. Classification models are widely used in various fields, including finance, healthcare, natural language processing, image recognition, and more. Here's a comprehensive write-up on classification models in machine learning:
+
+### Introduction to Classification:
+Classification is a supervised learning task where the goal is to assign a class label to an input data point. The classes can be binary (two classes, often referred to as positive and negative) or multi-class (more than two classes). The objective of classification is to build a model that can generalize from the training data to make accurate predictions on new, unseen data.
+
+# MULTINOMIAL LOGISTIC REGRESSION
+### Overview
+Multinomial logistic regression is used in situations where the dependent variable has more than two categories. It is an extension of the basic logistic regression model. For example, if the dependent variable has three categories, A, B and C we would estimate regression models of A vs B, and A vs C. It is important to note that these models are estimated simultaneously. This model is used to predict the probabilities of categorically dependent variable, which has more than two outcome classes. The dependent variables are nominal in nature. This means that there is no kind of ordering in the target classes ie these classes cannot be meaningfully ordered (eg 1,2,3,4 etc). Examples of multinomial logistic regression topics include:
+
+**Favorite ice cream flavor**
+* Dependent Variable: Ice cream flavor - Chocolate, Vanilla, Coffee, Strawberry
+* Independent Variables: Gender, Age, Ethnicity
+
+**Current employment status**
+* Dependent Variable: Employment status - Full-time employment, Part-time employment, Training, Unemployed
+* Independent Variables: Gender, Age, Qualifications, Area a person lives, number of children
+
+**Sentencing outcome status**
+* Independent Variable: Sentencing status - Prison, Community Penalty, Fine, Discharge
+* Dependent Variables: Gender, Age, Previous Convictions
+
+### Assumptions:
+Multinomial logistic regression assumes that:
+
+1 Each independent variable has a single value for each case.
+2 The dependent variable cannot be perfectly predicted from the independent variables for each case.
+3 No multicollinearity between independent variables - This occurs when two or more independent variables are highly correlated with each other. This makes it difficult to understand how much every independent variable contributes to the category of dependent variable.
+4 There should be no outliers in the data points.
+
+## Step 1: Installing the packages
+
+The following packages are required sjmisc and sjPlot. To create the multinomial models the nnet package needs to be installed.
+
+```{r}
+library(recipes)
+library(lava)
+library(sjmisc)
+library(igraph)
+library(e1071)
+library(hardhat)
+library(ipred)
+library(caret)
+library(sjPlot)
+library(nnet)
+library(wakefield)
+library(kknn)
+library(dplyr)
+library(nnet)
+library(caTools)
+library(ROCR)
+library(stargazer)
+library(dplyr)
+library(nnet)
+library(caTools)
+library(ROCR)
+library(stargazer)
+library(ISLR)
+library(ISLR2)
+library(MASS)
+library(splines)
+library(splines2)
+library(pROC)
+library(ISLR)
+library(ISLR2)
+library(MASS)
+library(splines)
+library(splines2)
+library(pROC)
+library(randomForest)
+library(rpart)
+library(rpart.plot)
+library(rattle)
+library(ISLR2)
+library(MASS)
+library(splines)
+library(pROC)
+library(rattle)
+library(rpart)
+library(party)
+library(partykit)
+library(ggplot2)
+library(tune)
+library(TunePareto)
+```
+
+
+## Step 2: Creating a data frame
+For the purposes of this exercise the wakefield package will be used to generate a random data set. This will be a psuedo data set to resemble the number of children in local authority who are either: a Child in Need (CIN), Subject to a Child Protection Plan (CP), or child looked after (CLA).
+
+### Using the wakefield package to easily generate reproducible "CPP" sample data
+```{r}
+set.seed(999)
+df.CPP <- 
+  r_data_frame(
+    n = 12500,
+    r_sample(n = 255, x = "CPP", prob = NULL, name = "Type"),
+    id, 
+    r_sample( x = c("Male", "Female"),
+              prob = c(0.52, 0.48),
+              name = "Sex"),
+        r_sample( x = c("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17"),
+              prob = c(0.12, 0.08, 0.08, 0.08, 0.08, 0.06, 0.06, 0.06, 0.06, 0.06, 0.038, 0.038, 0.038, 0.038, 0.038, 0.038, 0.01, 0.01),
+              name = "Age")
+  )
+```
+
+### Using the wakefield package to easily generate reproducible "CIN" sample data
+```{r}
+set.seed(999)
+df.CIN <- 
+  r_data_frame(
+    n = 97000,
+    r_sample(n = 255, x = "CIN", prob = NULL, name = "Type"),
+    id, 
+    r_sample( x = c("Male", "Female"),
+              prob = c(0.55, 0.45),
+              name = "Sex"),
+    r_sample( x = c("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17"),
+              prob = c(0.05, 0.04, 0.04, 0.04, 0.04, 0.044, 0.044, 0.044, 0.044, 0.044, 0.053, 0.053, 0.053, 0.053, 0.053, 0.053, 0.115, 0.115),
+              name = "Age")
+  )
+```
+
+### Using the wakefield package to easily generate reproducible "CLA" sample data
+```{r}
+set.seed(999)
+df.CLA <- 
+  r_data_frame(
+    n = 16200,
+    r_sample(n = 255, x = "CLA", prob = NULL, name = "Type"),
+    id, 
+    r_sample( x = c("Male", "Female"),
+              prob = c(0.57, 0.43),
+              name = "Sex"),
+    r_sample( x = c("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17"),
+              prob = c(0.05, 0.035, 0.035, 0.035, 0.035, 0.038, 0.038, 0.038, 0.038, 0.038, 0.065, 0.065, 0.065, 0.065, 0.065, 0.065, 0.115, 0.115),
+              name = "Age")
+  )
+```
+
+### Merging the dataframes
+```{r}
+mydata <- rbind(df.CIN, df.CLA, df.CPP)
+head(mydata,5)
+```
+
+
+## Step 3: Exploratory data analysis
+
+This set of data contains four variables. The dependent varaible is type which details the Children’s Services Outcome for each child. Using multinomial modeling we will explore how this outcome varies by sex. The next step is to start be requesting the frequencies of these two variables to check how they are coded.
+```{r}
+frq(mydata, Type, Sex)
+```
+
+The most common outcome was CIN (77% of all children), followed by CPP( 13%). We can also see that there were 69,014 males and 56,686 females. It is useful to see if there are any differences in Type by Sex with a cross-tabulation. Here we can see that CLA Children’s Services Outcomes are much more likely for males, and CPP are more common for females.
+
+## Chi-Square Test of Independence
+```{r}
+sjt.xtab(mydata$Type, mydata$Sex, show.col.prc = TRUE, show.row.prc = TRUE)
+```
+
+## Step 4: Run a multinomial logistic regression
+To run this regression the first step is to create a new “factor” variable, Type.f that replicates the values of Type but which replaces the values with text labels. Check that the coding of the variable has worked.
+```{r}
+mydata$Type.f <- factor(mydata$Type, labels = c("CIN", "CLA", "CPP"))
+head(mydata, n = 10)
+```
+
+The next step of the multinomial logistic regression is to select a reference category. By default R orders the factors alphabetically, so would treat CIN as the reference group. However, it is possible to change this using the relevel command. We will choose CLA as the reference group.
+```{r}
+mydata$Type.f <- relevel(mydata$Type.f, ref = "CLA")
+```
+
+It is useful to create a new dummy variable, male which has a 0 if female and 1 if male. The purpose of this is to make the gender effect clearer to see in the model.
+
+```{r}
+mydata$Male <- rec(mydata$Sex, rec = "Male = 1; Female = 0; else = NA")
+```
+
+Finally, the multinom command is used to run a multinomial model. The summary() command can be used once the model has converged to view the results.
+```{r}
+### Fit the model
+model1 <-multinom(Type.f ~ Male, data = mydata)
+```
+
+```{r}
+### Model summary
+summary(model1)
+```
+
+## Step 5: Model results
+The multinomial regression model results are included in the table Coefficients: with the associated standard errors included in the table Std.Errors: . The first column (INtercept) includes the estimates for the reference category (female), whilst column male returns the results for the effect of being male compared to the reference. Model results are given in logits, so we need to take the exponential to read these as odds and odds ratios. This can be achieved by using the exp(coef()) command.
+```{r}
+exp(coef(model1))
+```
+
+To calculate the 95% confidence interval (CI) and restructure the results to make it easier to read use the tab_model function.
+```{r}
+library(sjPlot)
+tab_model(model1)
+```
+
+Here we can see that the odds of becoming CIN rather than CLA are 6.3 for females. Compared to females, males have 0.91 times less odds of becoming CLA rather than becoming CIN. Similarly, the odds of becoming subject to Child Protection Plan rather than CLA are 0.83 times less for a male than a female. Underneath the table we can see the approximate R2 which is 0.000. We would therefore want to consider other potential predictors of Children’s Services Outcomes.
+
+## Step 7: Requesting predicted probabilities
+Sometimes it is desirable to request the predicted probabilities to better understand the chances of receiving different Children’s Services Outcomes. This can be achieved by using the fitted() command.
+```{r}
+predprob <-fitted(model1)
+head(predprob)
+```
+
+The first row of data relate to males. The table illustrates that the probability of a male becoming CIN is 0.77, CPP is 0.11 and CLA is 0.12. The second row refers to females, with probabilities of CIN = 0.13, CPP = 0.09 and CLA is 0.77. All rounded to 2.d.p
+
+### Confusion Matrix
+```{r}
+head(mydata,5)
+```
+
+```{r}
+p <- predict(model1, mydata)
+head(p)
+```
+
+```{r}
+confusionMatrix(p, reference=mydata$Type.f, positive="CLA")
+```
+
+
+## Step 8: Adding a continuous predictor
+It is possible to extend the model by adding in the age of the child/young person. This variable is needs to be numeric. For the purposes of this model the reference category will be CLA.
+
+```{r}
+mydata$Age <- as.numeric(mydata$Age)
+model2 <-multinom(Type.f ~ Male + Age, data = mydata)
+```
+
+```{r}
+### model summary
+summary(model2)
+```
+
+```{r}
+tab_model(model2,
+          show.ci50 = TRUE,
+          show.stat = TRUE)
+```
+
+The results in the table illustrate that the odds of becoming CIN rather than CLA tend to be lower as the age increases. For every year, the odds fall approximately 2% (1-0.98 = 0.02). This means that older children are less likely to become CIN rather LAC. The same is true when we consider the odds of CPP rather than LAC. The odds fall approximately 14%. Underneath the table we can see the approximate R2 which is 0.03. We would therefore want to consider other potential predictors of Children’s Services Outcomes.
+
+## confusion Matrix
+```{r}
+confusionMatrix(predict(model2, mydata),
+                reference = mydata$Type.f, positive = "CLA")
+```
+
+
+## Step 8: Exploring changes in predicted probability associated with gender whilst holding age constant
+Finally, is we want to explore the changes in predicted probability associated with Sex whilst holding age constant, we can create another dataset varying gender, but holding the Age at the sample mean.
+
+```{r}
+sub.Type <- data.frame(Male = c(0,1), Age = mean(mydata$Age))
+sub.Type$Male <- as.factor(sub.Type$Male)
+p <- predict(model2, newdata = sub.Type, "probs")
+barplot(p, ylab = "Probability", ylim=c(0,1), xlab = "Children's Service Outcome", beside = T, legend = TRUE)
+```
+
+For someone of average age, the predicted probability of becoming CIN for a woman is 0.79 compared to 0.79 for a man. The probability of a male (of average age) becoming CPP is approximately 0.09 compared to 0.08 for a female. The probability of a male (of average age) becoming CLA is approximately 0.12 compared to 0.14 for a female.
+
+# MULTINOMIAL LOGISTIC REGRESSION MODEL PART TWO:
+* Categorical response variables with at least three levels
+* Model and Interpretation
+* Misclassification error and confusion matric
+* Prediction and Model Assessment
+
+## CARDIOTOCOGRAPH DATA (CTG DATA)
+## DATA PARTITION
+## MULTINOMIAL LOGISTIC REGRESSION MODEL
+
+### Import the data using the command below
+```{r}
+mydata1 <- read.csv("Cardiotocographic.csv", header = TRUE)
+str(mydata1)
+```
+
+### Variable Definition
+From the structure of the data above, the first 21 variables are independent variables. 
+NSP = 1; Normal patient
+NSP = 2; Suspected Patient
+NSP = 3; Pathologic patient
+
+LB - FHR baseline (beats per minute)
+AC - # of accelerations per second
+FM - # of fetal movements per second
+UC - # of uterine contractions per second
+DL - # of light decelerations per second
+DS - # of severe decelerations per second
+DP - # of prolongued decelerations per second
+ASTV - percentage of time with abnormal short term variability
+MSTV - mean value of short term variability
+ALTV - percentage of time with abnormal long term variability
+MLTV - mean value of long term variability
+Width - width of FHR histogram
+Min - minimum of FHR histogram
+Max - Maximum of FHR histogram
+Nmax - # of histogram peaks
+Nzeros - # of histogram zeros
+Mode - histogram mode
+Mean - histogram mean
+Median - histogram median
+Variance - histogram variance
+Tendency - histogram tendency
+CLASS - FHR pattern class code (1 to 10)
+NSP - fetal state class code (N=normal; S=suspect; P=pathologic)
+
+### Convert the NSP variable to factor
+```{r}
+mydata1$NSP <- as.factor(mydata1$NSP)
+```
+
+### Now check the structure
+```{r}
+str(mydata1)
+```
+
+### Data Partition
+Let us make use of set.seed() so that if you partition the data set, you don't get different train and test data set.
+```{r}
+ind <- sample(2, nrow(mydata1),
+              replace = TRUE,
+              prob = c(0.6, 0.4))
+```
+
+### Create the training and testing dataset
+```{r}
+training <- mydata1[ind==1,]
+testing <- mydata1[ind ==2,]
+```
+
+From the code above, we can see that the training data set has 1277 observations with 22 variables while the testing data set has 849 observations with 22 variables
+
+### Multinomial Logistic Model Estimation
+```{r}
+## Load the following library
+library(nnet) ### nnet stands for neuro network
+```
+
+One most important we must tell the system is the reference level. Out of levels 1,2 and 3, what is our reference level. In this case, our reference level will be the normal patient
+```{r}
+training$NSP <- relevel(training$NSP, ref = "1")
+```
+
+In the command below, we are going to use all other variables as independent variables
+```{r}
+#### the model
+mymodel <- multinom(NSP~.,data = training)
+```
+
+You can see, all quickly, it goes over 100 iterations and then stops. From the results, the first iteration start with a very high error and error keeps reducing. At 100 iteration, the error remains constant.
+
+```{r}
+### Summary of the model
+summary(mymodel)
+```
+
+### View the Results Using View 
+```{r}
+tab_model(mymodel, 
+          show.se = TRUE,
+          show.stat = TRUE)
+```
+
+## Model Interpretation
+From the results above, we estimated the model with all 21 independent variable, therefore we have to check which variable is statistically significant. We therefore have to conduct a two-tailed Z-test.
+
+```{r}
+### 2-tailed z-test
+z <- summary(mymodel)$coefficients/summary(mymodel)$standard.errors
+p <- (1-pnorm(abs(z),0,1)) *2
+p
+```
+
+From the results above, we can drop variable that are insignificant. In other words, such variable are contributing anything to the model. For instance, we can drop variables like MLTV, Width, Min, Mode, Nmax, Nzeros and Tendency. We can now run the model again. 
+
+```{r}
+mymodel <- multinom(NSP~. -MLTV -Width -Min -Mode -Nmax - Nzeros -Tendency,data = training)
+summary(mymodel)
+z <- summary(mymodel)$coefficients/summary(mymodel)$standard.errors
+p <- (1-pnorm(abs(z),0,1)) *2
+p
+```
+
+The model above is now our final model. We will use the coefficient in the model above to write the equation
+
+### Model One
+$$
+\ln\left(\frac{P(NSP=2)}{P(NSP=1)}\right) = -15.79030 + 0.007146002*LB -674.8893*AC + 8.888663*FM -290.0121*UC -105.6467*DL -0.2778796*DS + 58.26660*DP+ --- + 0.04740086*Variance
+$$
+
+### Model Two
+$$
+\ln\left(\frac{P(NSP=3)}{P(NSP=1)}\right) = -13.84179 0.389746487*LB -71.2671*AC + 13.133329FM -305.7423*UC -178.6945*DL + 6.8575186*DS + 70.41143*DP + --- + 0.05509592*Variance
+$$
+
+For the first equation, on the left hand side, we have the logarithm of the probability that NSP is 2 given that NSP is equal to 1. In other words, that is the probability that the patient is suspect given the probability that the patient is normal. That is the log-odds of the patient being suspect given that the patient is normal. 
+
+For the second equation, on the left hand side, we have the logarithm of the probability that NSP is 3 given that NSP is equal to 1. In other words, that is the probability that the patient is pathologic given the probability that the patient is normal. That is the log-odds of the patient being pathologic given that the patient is normal. 
+
+### Alternative Estimation of the Model Above
+```{r}
+model26 <-multinom(NSP~. -MLTV -Width -Min -Mode -Nmax - Nzeros -Tendency,data = training)
+```
+
+### Summary of the model
+```{r}
+summary(model26)
+```
+
+### View the model
+```{r}
+tab_model(model26)
+```
+
+##Confusion Matrix
+### Misclassification Error
+In this step we will create confusion matrix for the model, for both training and test data set. We shall of calculate the misclssification error once again for both training and test data set
+
+### Confusion Matrix for the training data set
+Remember we created the model for variables that are only significant. We removed variables that are not significant from our model. We will therefore use our preferred model to create the confusion matrix
+
+```{r}
+### Confusion matrix for the training data set
+p <- predict(mymodel, training)
+head(p)
+```
+
+
+The results shows the classification of first six patients. We can now compare with actual patient in our training data set
+```{r}
+head(training$NSP)
+```
+
+From the results above, the first patient was predicted to be suspect and reality, the patient was suspect, the second and third patients were predicted to normal and in reality they were normal patients. The forth patient was predicted to suspect and in reality the patient was a pathologic. The fifth patient was predicted to be normal but in reality, the patient was pathologic. Lastly, the sixth patient was predicted to be suspect and in reality the patient is suspect. Let us now create the confusion matrix 
+```{r}
+confusion_matrix <- table(p, training$NSP)
+confusion_matrix
+```
+
+### Alternative Consusion Matrix
+```{r}
+confusionMatrix(predict(mymodel, training), 
+                reference = training$NSP, positive = "1")
+```
+
+The column values 1,2 and 3 are the actual values while row values 1,2 and 3 are the predicted values. From the matrix, there were 943 people who were normal and the model predicted them as normal. Besides, there were 48 people who were suspect, however, the model predicted them as being normal. In addition, there were 8 pathologic patients but the model predicted them as being normal. The data has 123 suspect patients and model also predicted 123 suspect patients. The data has 89 pathologic patients and the model predicted 89 pathologic patients as well. The numbers on the diagnoal as correct classification with the rest as being misclassification.
+
+Using the results above, we can calculate the accuracy rate of our model;
+### Correct classification
+```{r}
+sum(diag(confusion_matrix))/sum(confusion_matrix)
+```
+
+The model has 90.30498% correct classification
+
+### Misclassification
+```{r}
+1-sum(diag(confusion_matrix))/sum(confusion_matrix)
+```
+
+The model has 9.695074% misclassification.
+
+```{r}
+attach(training)
+confusionMatrix(p, NSP, positive = "1")
+```
+
+## Confusion Matrix Using the Test Data
+```{r}
+p1 <- predict(mymodel, testing)
+head(p1)
+head(testing$NSP)
+```
+
+### Create the confusion matrix
+```{r}
+confusion_matrix1 <- table(p1, testing$NSP)
+confusion_matrix1
+```
+
+### Model's Accuracy using the Testing data
+```{r}
+sum(diag(confusion_matrix1))/sum(confusion_matrix1)
+```
+
+### Misclassification Error
+```{r}
+1- sum(diag(confusion_matrix1))/sum(confusion_matrix1)
+```
+
+```{r}
+attach(testing)
+confusionMatrix(p1, NSP, positive = "1")
+```
+
+
+## Prediction and Model Asssesment
+### Accuracy and Sensitivity of the Model
+In the context of multinomial logistic regression, accuracy and sensitivity are both important metrics for evaluating the performance of the model. Accuracy represents the overall correctness of the model's predictions across all categories or classes. It measures the proportion of correctly predicted instances out of the total instances in the data set. While accuracy is a useful metric, especially when classes are balanced, it may not provide a complete picture of model performance when dealing with imbalanced datasets or when different classes have varying levels of importance.
+
+On the other hand, sensitivity, also known as the true positive rate or recall, focuses on the model's ability to correctly identify instances from a specific class. It measures the proportion of true positives (correctly predicted instances of a particular class) out of all actual instances belonging to that class. Sensitivity is particularly important when dealing with imbalanced datasets or when certain classes are more critical to identify correctly than others, such as in medical diagnosis.
+
+In summary, while accuracy gives an overall view of model performance, sensitivity provides insights into the model's ability to correctly detect specific classes, making it a valuable metric when dealing with imbalanced datasets or when certain classes have greater significance in the application. Both metrics should be considered in the context of the problem you're addressing to fully assess the effectiveness of your multinomial logistic regression model.
+
+Suppose we want to know how patients were normal, suspect and pathologic in the training data set, we can use the command below
+```{r}
+frq(training, NSP, Tendency)
+```
+
+From the training data, 981 patients was normal, 182 were suspect and 116 were pathologic.
+
+```{r}
+n <- table(training$NSP)
+n/sum(n)*100
+```
+
+From the data, 76.7% of the patients were normal, 14.23% were suspect and 9.07% were pathologic.
+
+## Specific classification
+```{r}
+confusion_matrix/colSums(confusion_matrix)
+```
+
+From the results above, the model is 96.13% classification for normal patients, 67.58% correct classification for suspect patients and about 76.72% for pathologic patients. In other words, the model is doing good in classifying 1 and 3 as compared to 2.
+
+### Accuracy and Sensitivity for the Testing Data
+```{r}
+confusion_matrix1/colSums(confusion_matrix1)
+```
+
+From the results above, the model predicts 94.21% correct classification for normal patients, 67.26% correct classification for suspect patients and about 76.67% for pathologic patients for the testing data. In other words, the model is doing good in classifying 1 and 3 as compared to 2 for the testing data.
+
+
+# ORDINAL LOGISTIC REGRESSION MODEL 0R PROPORTIONAL ODDS LOGISTIC REGRESSION
+```{r}
+mydata2 <- read.csv("Cardiotocographic.csv", header = TRUE)
+str(mydata2)
+```
+
+### Convert the dependent variable to ordinal factor
+```{r}
+mydata2$NSP <- as.ordered(mydata2$NSP)
+mydata2$Tendency<-as.factor(mydata2$Tendency)
+```
+
+## Check the structure again
+```{r}
+str(mydata2)
+```
+
+### Frequency Distribution
+```{r}
+frq(mydata2, NSP, Tendency)
+```
+
+### Check the Summary of the Data
+```{r}
+summary(mydata2)
+```
+
+### Create a two-way table
+```{r}
+attach(mydata2)
+xtabs(~NSP+Tendency, mydata2)
+```
+
+### Partition the Data Set
+Let us partition the data into train and test 
+```{r}
+ind1 <- sample(2, nrow(mydata2), replace = TRUE, prob = c(0.8, 0.2))
+train <- mydata2[ind1 == 1,]
+test <- mydata2[ind1 == 2,]
+```
+
+The train data set has 1729 observations with 22 variables, while the test data set has 397 observations with 22 variables
+
+## carry out the ordinal logistic regression or proportional logistic regression
+To estimate this model, we need the library called MASS
+```{r}
+library(MASS)
+```
+
+## Data Visualization
+### Bar Chart
+```{r fig.height=5, fig.width=6}
+# Load the ggplot2 library
+library(ggplot2)
+# Calculate the percentage of each gender
+percentage_data <- mydata2 %>%
+  group_by(NSP) %>%
+  summarize(Percentage = n() / nrow(mydata2) * 100)
+
+# Create the bar plot
+ggplot(percentage_data, aes(x = NSP, y = Percentage, fill = NSP)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = sprintf("%.1f%%", Percentage)), vjust = -0.5) +
+  labs(title = "Distribution of NSP",
+       x = "NSP",
+       y = "Percentage") +
+  theme_minimal()
+
+```
+
+### Grouped Bar Graph
+```{r}
+ggplot(data= mydata2, aes(x=NSP, y =Mean, fill=Tendency)) +
+  geom_bar(position = "dodge",
+           stat = "summary",
+           fun = "mean")+
+  theme_minimal()+
+  labs(title = "Bar Graph of Mean VS NSP and Tendency",
+  x = "NSP",
+  y = "Mean")+
+  theme(axis.text.x = element_text(angle = 360, vjust = 0.5))
+```
+
+### Grouped Bar Graphs
+```{r}
+library(ggplot2)
+ggplot(mydata2, aes(x=as.factor(NSP), fill=Tendency))+
+  geom_bar(aes( y=..count../tapply(..count.., ..x.. ,sum)[..x..]), position="dodge" ) +
+  geom_text(aes( y=..count../tapply(..count.., ..x.. ,sum)[..x..], label=scales::percent(..count../tapply(..count.., ..x.. ,sum)[..x..]) ),
+            stat="count", position=position_dodge(0.9), vjust=-0.5)+
+  ylab("Percentage of NSP Across Tendency") +
+  xlab("NSP")+
+  labs(title = "Bar Graph Showing the Distribution of NSP For Various Tendencies")
+  scale_y_continuous(labels = scales::percent)
+```
+
+
+```{r}
+### Estimate the model
+mymodel2 <- polr(NSP ~ LB+AC+FM, train, Hess = TRUE)
+summary(mymodel2)
+```
+
+```{r}
+tab_model(mymodel2)
+```
+
+
+From the results above, we can see that for a unit increase in FM,we expect about 6.92902 increase in the expected value of NSP in the log odds scale, given that all other variables in the model are held constant
+
+### Calculating the P-values for our Model
+```{r}
+(ctable <- coef(summary(mymodel2)))
+```
+
+```{r}
+p <- pnorm(abs(ctable[,"t value"]),lower.tail = FALSE)*2
+(ctable<- cbind(ctable, "p-value" = p))
+```
+
+### Prediction
+```{r}
+pred <- predict(mymodel2, train[1:5,], type = 'prob')
+print(pred, digits = 3)
+```
+
+```{r}
+train[1:5, 1:3]
+```
+
+Using the results above, we can write the model and predict the probability of NSP being 1,2 or 3. 
+
+## Equation and Calculating the Probabilities
+### Use all the variables
+```{r}
+mymodel2 <- polr(NSP ~., train, Hess = TRUE)
+summary(mymodel2)
+```
+
+```{r}
+### Calculating the P-values for our Model
+(ctable <- coef(summary(mymodel2)))
+```
+
+```{r}
+p <- pnorm(abs(ctable[,"t value"]),lower.tail = FALSE)*2
+(ctable<- cbind(ctable, "p-value" = p))
+```
+
+### Estimate the new with significant variables only
+```{r}
+### Estimate the model
+mymodel2 <- polr(NSP ~ AC+FM+UC+DL+DS+DP+ASTV+Width+Min+Variance, train, Hess = TRUE)
+summary(mymodel2)
+```
+
+```{r}
+### Calculating the P-values for our Model
+(ctable <- coef(summary(mymodel2)))
+```
+
+```{r}
+p <- pnorm(abs(ctable[,"t value"]),lower.tail = FALSE)*2
+(ctable<- cbind(ctable, "p-value" = p))
+```
+
+### Prediction
+```{r}
+pred1 <- predict(mymodel2, train)
+head(pred1,10)
+```
+
+
+###Confusion Matrix
+```{r}
+tab2 <- table(pred1, train$NSP)
+tab2
+```
+### Calculate the Accuracy
+```{r}
+sum(diag(tab2))/sum(tab2)
+```
+
+An accuracy score of 0.8635838 for the multinomial logistic regression model indicates that the model correctly predicted the outcome category for approximately 86.36% of the total instances in your dataset. In other words, out of all the observations in your dataset, the model made the correct prediction for about 86.36% of them. The model successfully classified 86.36% of the instances into their respective outcome categories. The remaining 100% - 86.36% = 13.64% of the instances were incorrectly classified by the model. Accuracy is a commonly used metric for evaluating the overall performance of classification models. However, it's essential to interpret accuracy in the context of your specific problem and dataset. Here are a few considerations: If the dataset has imbalanced classes (i.e., some outcome categories are much more prevalent than others), a high accuracy score may not necessarily indicate a good model. In such cases, the model might achieve high accuracy by simply predicting the majority class most of the time. You should also consider other metrics like precision, recall, and F1-score, especially for minority classes.The significance of accuracy depends on the real-world consequences of misclassification. In some applications, misclassifying certain categories may have more severe consequences than others. Sensitivity and specificity metrics can provide a more nuanced view of the model's performance for specific classes. It's important to establish a baseline accuracy to compare your model's performance. If the dataset has a natural baseline (e.g., randomly guessing), you should compare your model's accuracy against that baseline.
+
+In summary, an accuracy of 0.8635838 suggests that your multinomial logistic regression model is performing well in terms of overall classification accuracy. However, to get a more comprehensive understanding of its performance, it's essential to consider other metrics and contextual factors, especially if your dataset has imbalanced classes or specific classes with different levels of importance.
+### Miscalculation
+```{r}
+1 - sum(diag(tab2))/sum(tab2)
+```
+
+```{r}
+attach(train)
+confusionMatrix(pred1, NSP, positive = "1")
+
+```
+
+
+### Calculate the Accuracy and Miclassification for the Test data
+```{r}
+pred2 <- predict(mymodel2, test)
+head(pred2,10)
+```
+
+#### Confusion Matrix
+```{r}
+tab3 <- table(pred2, test$NSP)
+tab3
+```
+
+### Calculate the Accuracy
+```{r}
+sum(diag(tab3))/sum(tab3)
+```
+
+### Miscalculation
+```{r}
+1-sum(diag(tab3))/sum(tab3)
+```
+
+```{r}
+attach(test)
+confusionMatrix(pred2, NSP, positive = "1")
+```
+
+The provided above represents the confusion matrix and various statistics for a multinomial logistic regression model. Let's break down and explain each part of the output in detail:
+
+### Confusion Matrix
+The confusion matrix is a tabular representation that summarizes the model's performance by showing the count of correct and incorrect predictions for each class (category). In your case, you have three classes (1, 2, and 3) for the outcome variable. Rows represent the predicted classes, while columns represent the actual or reference classes. For example, in the top-left cell (Row 1, Column 1), you have 291 instances where the model correctly predicted class 1 when the actual class was also 1. In the top-middle cell (Row 1, Column 2), there are 33 instances where the model incorrectly predicted class 2 when the actual class was 1.
+
+### Overall Statistics
+**Accuracy:** The overall accuracy of the model is 0.8485 or 84.85%. This means that the model correctly predicted the outcome for approximately 84.85% of all instances in the dataset. 95% CI (Confidence **Interval):** The confidence interval provides a range within which the true accuracy is likely to fall. In this case, it is between 0.8093 and 0.8823.
+**No Information Rate (NIR):** NIR is the accuracy achieved by always predicting the majority class. In this case, it's 0.7551. Your model's accuracy should be significantly better than NIR to be considered meaningful.
+**Kappa:** Kappa is a statistic that measures the agreement between the model's predictions and the actual values. A kappa value of 0.5745 indicates moderate agreement beyond what would be expected by chance.
+
+Mcnemar's Test P-Value: Mcnemar's test is a statistical test used to determine if there is a significant difference between the model's predictions and the actual values. The low p-value (0.0004862) suggests that there is a significant difference.
+
+### Statistics by Class:
+**Sensitivity:** Sensitivity, also known as True Positive Rate or Recall, measures the proportion of true positive predictions for each class. For Class 1, it's 0.9732, which means the model is excellent at correctly identifying Class 1 instances.
+
+**Specificity:** Specificity measures the proportion of true negatives for each class. For Class 3, it's 0.97814, indicating the model's ability to correctly identify Class 3 instances when they are not Class 3.
+
+**Pos Pred Value:** Positive Predictive Value is the proportion of true positive predictions out of all positive predictions made by the model. For Class 1, it's 0.8954, suggesting that when the model predicts Class 1, it's correct approximately 89.54% of the time.
+
+**Neg Pred Value:** Negative Predictive Value is the proportion of true negative predictions out of all negative predictions made by the model. For Class 3, it's 0.96757, indicating a high accuracy in predicting Class 3 when it's not Class 3.
+
+**Prevalence:** Prevalence represents the proportion of instances belonging to each class in the dataset.
+
+**Detection Rate:** Detection Rate measures how well the model detects instances of each class.
+
+**Detection Prevalence:** Detection Prevalence is the proportion of instances that the model predicted as each class.
+
+**Balanced Accuracy:** Balanced Accuracy is the average of sensitivity and specificity and provides a balanced measure of classification performance for each class.
+
+In summary, this output provides a comprehensive assessment of the multinomial logistic regression model's performance. It includes overall accuracy, class-specific metrics, and additional statistical measures, allowing you to evaluate the model's strengths and weaknesses for each class and as a whole.
+
+# APPLICATION OF RANDOM FOREST IN CLASSIFICATION MODEL
+## Load the data set
+```{r}
+mydata4 <- read.csv("Cardiotocographic.csv", header = TRUE)
+str(mydata4)
+attach(mydata4)
+```
+
+The data loaded has 2126 observations with 22 variables. This data is called is CTG. The data has the variable FHR, fetal heart rate and uterine contraction (UC) feature on cardiotocograms. 2126 fetal cardiotocograms (CTGs) automatically processed and diagnostic feature measured. CTG classified by three experrs obstetrician and consensus classification label as Normal, Suspect or Pathologic. The response variable is NSP (Normal, Suspect, Pathologic) and all the 21 variables are predictor variables. Remember NSP is an integer, we will have to convert it factor
+
+```{r}
+mydata4$NSP <- factor(mydata4$NSP, levels = c(1,2,3),
+                      labels = c("Normal", "Suspect", "Pathologic"))
+str(mydata4)
+```
+
+LB - FHR baseline (beats per minute)
+AC - # of accelerations per second
+FM - # of fetal movements per second
+UC - # of uterine contractions per second
+DL - # of light decelerations per second
+DS - # of severe decelerations per second
+DP - # of prolongued decelerations per second
+ASTV - percentage of time with abnormal short term variability
+MSTV - mean value of short term variability
+ALTV - percentage of time with abnormal long term variability
+MLTV - mean value of long term variability
+Width - width of FHR histogram
+Min - minimum of FHR histogram
+Max - Maximum of FHR histogram
+Nmax - # of histogram peaks
+Nzeros - # of histogram zeros
+Mode - histogram mode
+Mean - histogram mean
+Median - histogram median
+Variance - histogram variance
+Tendency - histogram tendency
+NSP - fetal state class code (N=normal; S=suspect; P=pathologic)
+
+Now let us look at how many observations are present for each factor (Normal, Suspect, Pathologic)
+```{r}
+frq(mydata4, NSP)
+```
+
+From the frequency table above, majority of the respondents were found in normal category (1655), followed by those in suspect category (195) and finally those in pathologic category (176)
+
+### Data Partitioning
+We shall start with random seed so that we can make this analysis reproducible
+```{r}
+set.seed(123)
+ind <- sample(2, nrow(mydata4), replace = TRUE, prob = c(0.7, 0.3))
+train_data <- mydata4[ind ==1,] ## 1495 observations
+test_data <- mydata4[ind ==2,] ## 631 observations
+```
+
+### Random Forest Model
+* Random Forest developed by aggregating trees
+* Can be used for classification or regression 
+* Avoids overfitting
+* Can deal with large number of features
+* Helps with feature selection based on importance
+* Use-friendly: only 2 free parameters
+Trees - ntree, default 500 
+Variables randomly sampled as candidates at each split-mtry, default is sq.root(p) for classification & p/3 for regression
+
+Random forest methodology is developed by aggregating several decision trees. Instead of using one decision tree, random forest uses several or hundreds of decision trees and aggregate the results from all the trees to come up with classification model. Remember, random forest can be used classification as well as regression. If the response variable is categorical variable, the algorithm will develop a classification model, and if the response variable is continuous, the algorithm will develop a regression model. 
+
+## Steps
+### 1. Draw ntree bootstrap samples
+### 2. For each bootstrap sample, grow un-prunned tree by choosing best based on a random sample of mtry predictors at each node
+### 3. Predict new data using the majority votes for classificatio and average for regression based on ntree trees
+
+Consider an example below
+```{r}
+knitr::include_graphics("random.png")
+```
+
+```{r}
+knitr::include_graphics("random2.png")
+```
+
+
+According to the information given, the algorithm predicted that the patient belongs to suspect category. We are going to make use of random fores; however, let consider case of sample case of decision tree
+
+### Sample Decision Tree
+```{r fig.height=9, fig.width=12}
+modFitA1 <- rpart(NSP ~ ., data=train_data, method="class")
+fancyRpartPlot(modFitA1)
+```
+
+### Prediction with Decision Tree
+```{r}
+mypred <- predict(modFitA1, newdata = train_data, type = "class")
+head(mypred, 5)
+head(train_data$NSP,5)
+```
+
+```{r}
+confusionMatrix(mypred, train_data$NSP)
+```
+
+### Make Prediction using the Test data
+### Prediction with Decision Tree
+```{r}
+mypred <- predict(modFitA1, newdata = test_data, type = "class")
+head(mypred, 5)
+head(test_data$NSP,5)
+```
+
+```{r}
+confusionMatrix(mypred, test_data$NSP)
+```
+
+### Build the Classification and Regression Tree (CART) Model
+### looking at classification based on p.hat = .5 cutoff
+### 10-fold CV, repeated 5 times
+```{r}
+train_model <- trainControl(method = "repeatedcv", number = 5, repeats=10)
+
+
+model.cart <- train( NSP ~ ., data=train_data, 
+  method = "rpart",
+  trControl = train_model)
+```
+
+### The estimated model
+```{r}
+model.cart
+```
+
+### View the final model                  
+```{r}
+model.cart$finalModel
+```
+
+### Plot the Model
+```{r}
+plot(model.cart)
+```
+
+### Confusion Matrix
+```{r}
+confusionMatrix(predict(model.cart, train_data), 
+                reference=train_data$NSP, positive="Normal")
+```
+
+### F1 Score
+```{r}
+predictions <- predict(model.cart, train_data, type = "raw")
+confusion.matrix <- table(train_data$NSP, predictions)
+precision <- (confusion.matrix[1, 1] / sum(confusion.matrix[, 1])) * 100
+recall <- (confusion.matrix[1, 1] / sum(confusion.matrix[1, ])) * 100
+F1.score <- (2 * precision * recall) / (precision + recall)
+
+# Print the results
+cat("Precision for class 1:", precision, "%")
+cat("Recall for class 1:", recall, "%")
+cat("F1 Score:", F1.score, "%")
+
+```
+
+### CART Tree
+```{r}
+fancyRpartPlot(model.cart$finalModel)
+```
+
+### View the variable Importance
+```{r}
+plot(varImp(model.cart), main = "Variable Importance for CART Model")
+```
+
+
+### DEVELOPE A RANDOM FOREST MODEL.
+```{r}
+library(randomForest)
+set.seed(222)
+```
+
+We will therefore estimate our classification model with NSP as our dependent variable and all the remaining variable as independent variables
+```{r}
+rf <- randomForest(NSP~.,data = train_data)
+```
+
+Let us now look at the model using print function
+```{r}
+print(rf)
+```
+
+The output is accompanied by the formular used, where we use NSP as DV, and all the other as IV. The data used in this algorithm is from the training data. This random forest is classification because the response variable is categorical/factor. The default number of trees is 500. The mtry, is the number of variable tried at each split is 4. Out of Bag estimate of error rate is approximately 5.75%. So we have about 94.25% accuracy, which is quite okay. The error when predicting Normal people is very low as compared to when predicting suspect or pathologic.
+
+So what attributes does this model has, we can check using the command below;
+```{r}
+attributes(rf)
+```
+
+The model contains all the attributes listed above, for example, if we need the confusion matrix only, we can use the command below
+```{r}
+rf$confusion
+```
+
+### Prediction and Confusion Matrix
+We will make prediction using the package caret
+```{r}
+library(caret)
+```
+
+We can view the prediction from the model vs the real data
+```{r}
+p1 <- predict(rf, train_data)
+head(p1)
+```
+Observations from the real data
+```{r}
+head(train_data$NSP)
+```
+
+The first six prediction are all accurate, that is 100% accuracy for the six observations
+```{r}
+confusionMatrix(p1, train_data$NSP)
+```
+
+From the confusion matrix, the model predicted that 1160 people belong in grouped and were alos observed to belong in group 1. The model predicted that 211 people belong in group 2 and the were observed to belong to group 2 and lastly the model predicted that 122 people belong in groups and indeed were observed to belong in group 3. However, we two people we misclassified to belong to group while they were observed to belong in group 2
+
+Sensitity statistics tell us how often classes were correctly classified. In other words, sensitity for class 1 is 1.00, that is, we have 100 accuracy that patient in class 1 were correctly classified to belong in class 1. 
+
+### Out of Bug Error
+For each bootstrap iteration and related tree prediction error using data not in bootstrap sample (also called out of bag of OOB data) is estimated
+* Classification: Accuracy
+* Regression: R-Sq & SMSE
+
+#### Predicting with Test Data
+Now that all the data points in the train data set are seen by the model, we can try predicting using the test data which is not seen by the model. 
+We can view the prediction from the model vs the real data
+```{r}
+p2 <- predict(rf, test_data)
+head(p2)
+```
+Observations from the real data
+```{r}
+head(test_data$NSP)
+```
+
+### Create the Confusion Matrix
+```{r}
+confusionMatrix(p2, test_data$NSP)
+```
+
+The test data has not been seen by the random forest model and the accuracy has come down to 93.34%. The 95% CI is still good, ranging between 91% to 95%. There is slightly higher misclassification from the test data as compared to the train data. Besides, sensitivity for predicting class 1 is still higher as compared to class 2 and 3.
+
+# Error Rate of Random Forest Model
+We will make a plot using the command below to see error rate in our model
+```{r fig.width= 8, fig.height=6}
+plot(rf, main ="Error Rate of the Random Forest Model")
+```
+
+
+As the number of trees grows, the out of bag error comes down to later remain constant. From the plot, we cannot improve the error after about 300 trees. 
+
+# Tune the Random Forest Model
+The code below is used to optimize and fine-tune parameters for a random forest model. Here's a breakdown of the function's arguments and their purposes:
+
+*train_data[,-22]:* This represents the training data where all columns except the 22nd column are used as predictor variables (independent variables) for model training.
+
+*train_data[,22]:* This represents the 22nd column of the training data, which is typically used as the target variable (dependent variable) that the model will aim to predict.
+
+*stepFactor = 0.5:* stepFactor is a parameter that controls the size of steps to be taken when exploring the parameter space. In this case, it's set to 0.5, which means that the function will explore parameter values in increments of 0.5.
+
+*plot = TRUE:* When plot is set to TRUE, it means that the function will generate plots to visualize the results of tuning.
+
+*ntreeTry = 300:* ntreeTry specifies the number of trees to try when tuning the random forest model. In this case, it will try different numbers of trees in the range specified to optimize the model.
+
+*trace = TRUE:* When trace is set to TRUE, it provides information on the progress of the tuning process.
+
+*improve = 0.05:* improve sets the threshold for improvement. The tuning process will continue until an improvement in the model's performance (measured by the out-of-bag error) is less than or equal to 0.05.
+
+The tuneRF function is used to find the optimal number of trees and other hyperparameters for a random forest model. It does this by conducting a search over different values for the number of trees and other hyperparameters, evaluating the model's performance, and then providing recommendations for the best combination of hyperparameters. The results are typically visualized in a plot to help you choose the best model configuration.
+
+
+```{r}
+t<- tuneRF(train_data[,-22], train_data[,22],
+       stepFactor = 0.5,
+       plot = TRUE,
+       ntreeTry = 300,
+       trace = TRUE,
+       improve = 0.05)
+```
+
+The out of bag error is hight when mtry =2 but comes down as mtry increases to 4 and comes further down when mtry = 8 and rises when mtry = 16. This gives us an idea of what mtry value we should choose. We can now go back to our random forest model and change a few things to tune our model
+```{r}
+rf2 <- randomForest(NSP~.,data = train_data,
+                   ntree = 300,
+                   mtry = 8,
+                   importance = TRUE)
+```
+
+### Print the model
+```{r}
+print(rf2)
+```
+
+Earlier, the out of bag error was 5.62% and this one, the OOB has come down to 5.28%. Besides, classification for predicting class 2 and 3 groups have improved as compared to the previous model. However, the classification error for predicting class 1 worsened. Let us check the accuracy level of our model
+```{r}
+p_1 <- predict(rf2, train_data)
+head(p_1)
+head(train_data$NSP)
+```
+
+```{r}
+confusionMatrix(p_1, train_data$NSP)
+```
+
+The real test to see how our model is performing will be based on the test data as shown below
+```{r}
+p_2 <- predict(rf2, test_data)
+head(p_2)
+head(test_data$NSP)
+```
+
+```{r}
+confusionMatrix(p_2, test_data$NSP)
+```
+
+No much changes in our model but there are some improvements
+
+### Number of Nodes for Trees
+Remember we have 300 trees in this model
+```{r fig.height=5, fig.width=7}
+hist(treesize(rf2),
+     main = "Number of Nodes for the Trees",
+     col = "steelblue")
+```
+
+The histogram shows the distribution of the number of nodes in each of those 300 trees. From the histogram above, there are about 80 trees with approximately 80 nodes in each. We also have few trees with sixty nodes and also few trees with more than 100 nodes. Majority of trees have an average of 80 nodes. 
+
+### Variable Importance
+We can also find which variable played an important role in the model using the command below
+```{r fig.height=6, fig.width= 8}
+varImpPlot(rf2, main = "Variable Importance in our Random Forest Model")
+```
+
+The chart shows how worst the model would perform if we remove each variable. In other words, the first chart shows the mean decrease accuracy when a variable is removed. Some variable have a higher contribution to our model as compared to other. For example, DS variable has almost zero contribution while variable such as ASTV abd ALTV have higher contribution to our model. 
+The second chart measure how pure the nodes are at the end of the tree without each variable. From the chart, the first four stands out as the most significant predictors, where if we remove them from model, mean Gini decreases significantly. 
+
+Let us view the fisrt top ten variables
+```{r fig.height=5, fig.width= 8}
+varImpPlot(rf2,
+           sort = TRUE,
+           n.var = 10,
+           main = "Variable Importance in our Random Forest Model: Top 10")
+```
+
+We can as well get the quantitative value to evaluate the variable importance. 
+```{r}
+rf2$importance
+```
+
+Let us now get which predictor variables are actually used in the random forest
+```{r}
+varUsed(rf2)
+```
+
+The results above shows how many time each variable occurred/was used in the model. DS was only used twice in the model.
+
+# Partial Dependence Plot
+partial dependence plot give a good graphical depiction of marginal effect of a variable on the class probability (classification) or response (regression)
+```{r fig.height=6}
+partialPlot(rf2, train_data, ASTV, "Normal")
+```
+
+
+When ASTV is less than 60, the model predicts the patient to belong in class 1 as compared to when ASTV is more than 60. Similarly we can look at the plot for class 3
+
+```{r fig.height=6}
+partialPlot(rf2, train_data, ASTV, "Pathologic")
+```
+
+From the plot, when ASTV is more than 60, the model predict class 3 more than when ASTV is less than 60. From the previous results we saw that misclassification was generally high in class two. Lets make a plot to ASTV for class 2
+```{r fig.height=6}
+partialPlot(rf2, train_data, ASTV, "Suspect")
+```
+
+We can see there is more confusion with class 2.
+
+# Extracting A Single Tree
+Let us get the first tree
+```{r}
+getTree(rf2, 1, labelVar = TRUE)
+```
+
+From the results, whenever it says, the status is -1, it means, this node is a terminal node and the classification based on this terminal node is the patient NSP value is 2 or the patient is suspect. Similarly at various terminals where status is negative the model predict patients' NSP as 3 and 1 as well. 
+
+### Probabilities and Prediction
+```{r}
+probabilities <- rf2$votes
+Predictions <- rf2$predicted
+Preds <- data.frame(probabilities, Predictions)
+head(Preds,20)
+```
+
+### Testing the Model by classifying patients with following information. 
+```{r}
+patients <- read.csv("patients.csv")
+patients$NSP <- factor(patients$NSP, levels = c(1,2,3),
+                       labels = c("Normal","Suspect","Pathologic"))
+str(patients)
+head(patients,5)
+```
+
+```{r}
+# Use the trained random forest model to classify the patient
+predicted_class <- predict(rf2, patients)
+```
+
+```{r}
+# The 'predicted_class' variable now contains the predicted class (1, 2, or 3)
+# You can print or use it as needed
+print(predicted_class)
+```
+
+```{r}
+### Actual data
+head(patients$NSP)
+```
+
+### Accuracy of the Model
+```{r}
+confusionMatrix(predicted_class, patients$NSP)
+```
+
+
+## Additional Machine Learning Algorithm (CART MODEL)
+```{r}
+mydata4 <- read.csv("Cardiotocographic.csv", header = TRUE)
+mydata4$NSP <- as.factor(mydata4$NSP)
+str(mydata4)
+attach(mydata4)
+```
+
+### Make Some Plots
+```{r}
+par(mfrow=c(1,2))
+
+boxplot(LB ~ NSP)
+boxplot(ASTV ~ NSP)
+boxplot(Width ~ NSP)
+boxplot(Median ~ NSP)
+```
+
+### Correlation Matrix
+```{r}
+par(mfrow=c(1,1))
+pairs( cbind(AC, ASTV, MSTV, Width, Min, Max), pch=19, lower.panel=NULL, cex=.5)
+
+```
+
+### looking at classification based on p.hat = .5 cutoff
+### 10-fold CV, repeated 5 times
+```{r}
+train_model <- trainControl(method = "repeatedcv", number = 5, repeats=10)
+
+
+model.cart <- train( NSP ~., 
+  data = mydata4, 
+  method = "rpart",
+  trControl = train_model)
+
+model.cart
+
+model.cart$finalModel
+```
+
+### Obtain the Confusion Matrix
+```{r}
+confusionMatrix(predict(model.cart, mydata4), 
+                reference=mydata4$NSP, positive="1")
+
+```
+
+### Plot the CART Tree
+```{r}
+fancyRpartPlot(model.cart$finalModel)
+```
+
+
+### RANDOM FOREST
+```{r}
+model.rf <- train(
+  NSP ~.,
+  data = mydata4, 
+  method = "rf",
+  trControl = train_model)
+model.rf
+```
+
+### Summary of the Model
+```{r}
+summary(model.rf$finalModel)
+```
+
+### The Final Model
+```{r}
+model.rf$finalModel
+```
+
+### Plot the Model
+```{r}
+plot(model.rf$finalModel)
+```
+
+
+### Variable Importance
+```{r}
+varImp(model.rf$finalModel)
+plot( varImp(model.rf) )
+
+yhat = 1-predict(model.rf$finalModel, type="prob")[,1]
+plot(mydata4$ASTV, yhat)
+```
+
+### Scatter Plots
+```{r}
+scatter.smooth(mydata4$MSTV, yhat, span=.4) 
+scatter.smooth(mydata4$ASTV, yhat, span=.4) 
+scatter.smooth(mydata4$ALTV, yhat, span=.4) 
+scatter.smooth(mydata4$Mean, yhat, span=.4) 
+scatter.smooth(mydata4$DP, yhat, span=.4)
+scatter.smooth(mydata4$Mode, yhat, span=.4)
+scatter.smooth(mydata4$AC, yhat, span=.4)
+scatter.smooth(mydata4$UC, yhat, span=.4)
+boxplot(yhat ~ Tendency)
+boxplot(yhat ~ mydata4$NSP)
+```
+
+### The Confusion Matrix
+```{r}
+confusionMatrix(predict(model.rf, mydata4), 
+                reference=mydata4$NSP, positive="1")
+```
+
+### Decision Tree for Hear Failure
+```{r}
+heart <- read.csv("heart_failure_clinical_records_dataset.csv")
+head(heart,5)
+attach(heart)
+```
+
+## Change some variable to factors
+```{r}
+heart$anaemia <- as.factor(heart$anaemia)
+heart$diabetes <- as.factor(heart$diabetes)
+heart$high_blood_pressure <- as.factor(heart$high_blood_pressure)
+heart$sex <- as.factor(heart$sex)
+heart$smoking <- as.factor(heart$smoking)
+heart$heart.failure <- as.factor(heart$heart.failure)
+str(heart)
+```
+
+## Sample Decision Tree
+### Using Rpart.Plot to Display the Decision Tree Diagram
+```{r fig.height=7, fig.width=11}
+heart_failure <- rpart(heart.failure ~ .,
+                       data=heart, 
+                       method="class")
+rpart.plot(heart_failure, main = "Decision Tree for Heart Failure")
+```
+
+### Variable Importance
+```{r}
+varImp(heart_failure)
+```
+
+### TRYING A DIFFERENT DISPLAY
+```{r fig.width=14}
+tree.model.party1 <- as.party(heart_failure)
+plot(tree.model.party1)
+```
+
+## Using fancyRpartPlot to Display the Decision Tree Diagram
+```{r fig.height=8, fig.width=10}
+fancyRpartPlot(heart_failure, main = "Decision Tree for Heart Failure")
+```
+
+We can use the decision tree plot above to make prediction on the heart failure.  We we can now move to K-Nearest neighbors
+
+### CLASSIFICATION TREE WITH IRIS DATA SET
+#### Iris Data set
+```{r}
+frq(iris, Species)
+```
+
+### Check the struture of the data set
+```{r}
+str(iris)
+```
+
+### Plot the Tree
+This R code performs two operations on the dataset "iris":
+
+It assigns the dataset "iris" to the variable "flowers_data".
+It filters out rows where the species is "virginica" and reassigns the filtered dataset back to "flowers_data".
+So, after executing this code, "flowers_data" will contain only the rows where the species is not "virginica".
+```{r fig.width=12}
+flowers_data <- iris
+flowers_data <- flowers_data[!(flowers_data$Species == 'virginica'),]
+flowers_data
+```
+
+### Check the Frequency
+```{r}
+frq(flowers_data, Species)
+```
+
+```{r fig.width=12}
+tree.model <- rpart(Species ~ . ,
+                    data = flowers_data)
+tree.model.party <-
+as.party(tree.model)
+plot(tree.model.party)
+```
+
+```{r fig.width=14}
+flowers_data <- iris
+tree.model <- rpart(Species~ ., 
+                    data = flowers_data)
+tree.model.party <- as.party(tree.model)
+plot(tree.model.party)
+```
+
+# K NEAREST NEIGHBORS
+## Classification
+K-Nearest Neighbors (K-NN) is a versatile and intuitive machine learning algorithm used for both classification and regression tasks. At its core, K-NN operates on the principle of similarity: it classifies or predicts a data point based on the majority class or average of its K nearest neighbors in the feature space. The choice of K, the number of neighbors, is a critical parameter that influences the algorithm's performance. A smaller K can make the model sensitive to noise and outliers, potentially leading to overfitting, while a larger K may result in a smoother decision boundary or prediction but could miss important local patterns in the data.
+
+One of the key strengths of K-NN is its simplicity and ease of implementation. It doesn't require a training phase; instead, it relies on the entire dataset during prediction. Additionally, K-NN can be applied to both numerical and categorical data, making it a versatile choice for various types of datasets. However, it's important to consider the impact of scaling and distance metric selection when working with K-NN, as the algorithm's performance can be sensitive to these factors. Overall, K-NN is a valuable tool in the machine learning toolkit, especially for cases where interpretability and simplicity are desired, but it should be used judiciously, with careful consideration of K and data preprocessing steps to achieve optimal results. However many people confuses the k nearest neighbours to k means clustering. They are not the same thing. K means clustering is non supervised machine learning algorith while k-NN is supervised machine learning. This method is used for classification and regression. 
+
+#### Consider the figure below when K=3
+```{r}
+knitr::include_graphics("knn.png")
+```
+
+#### Consider the figure below when K=5
+```{r}
+knitr::include_graphics("knn2.png")
+```
+
+# Application Example of K-NN
+* Recommendation Systems 
+* Text categorization
+* Finance
+* Medicine
+* Anomaly detection
+
+#### Load the following library
+```{r}
+library(caret)
+library(pROC)
+library(mlbench)
+```
+
+### Load the data
+```{r}
+k_nn <- read.csv("binary.csv")
+head(k_nn,5)
+```
+
+### Check the structure of the data set
+```{r}
+str(k_nn)
+```
+
+### Check the admit variable to factor variable
+```{r}
+k_nn$admit <- as.factor(k_nn$admit)
+str(k_nn)
+```
+
+### Create yes and no
+```{r}
+k_nn$admit <- factor(k_nn$admit, levels = c(0,1),
+                     labels = c("No","Yes"))
+```
+
+### Structure
+```{r}
+str(k_nn)
+```
+
+### Frequency
+```{r}
+frq(k_nn, admit)
+```
+
+### Data Partitioning
+```{r}
+set.seed(1234)
+ind3 <- sample(2, nrow(k_nn), replace = TRUE, prob = c(0.7, 0.3))
+training <- k_nn[ind3 == 1,]
+testing <- k_nn[ind3 ==2,]
+```
+
+### Check the structure of training and testing data set
+```{r}
+str(testing)
+str(training)
+```
+
+## K-Nearest Neighbors Method
+Before we estimate our kNN methods, let us specify the train and test models
+```{r}
+trControl <- trainControl(method = "repeatedcv",number = 10,repeats = 3)
+```
+
+### Let us store the model in FIT
+```{r}
+FIT <-  train(admit~.,
+              data = training,
+              method = 'knn',
+              tuneLength = 20,
+              trControl = trControl,
+              preProc = c("center","scale"))
+```
+
+### Model Performance
+```{r}
+FIT
+```
+
+The results above indicates that we have carried out the k- nearest neighbors with a sample of 284 observations, three predictors(GRA, GPA and RANK) and two classes, "yes" and "no", where yes means the student was admitted and no means the student was not admitted. We have carried out a ten fold cross validation repeated three times. This means that in each cross validation the training data is splited into ten parts, and 9 of them are used in creating the model and the remaining part is used in assessing the performance of the model. In the model above, we have the model accuracy and kappa value. Accuracy was used to select the optimal model using the largest value. The final value used for the model was k = 31.
+
+### Let us plot the model
+```{r}
+plot(FIT)
+```
+
+### Get the Parameter Importance
+```{r}
+varImp(FIT)
+```
+
+From the output above, GPA turns out to be the most important variable and GRE turns to be least important variable in our model.
+
+### Plot the variable importance
+```{r}
+plot(varImp(FIT), main = "Variable Importance for the kNN Model")
+```
+
+### Evaluate Prediction
+```{r}
+pred <- predict(FIT, newdata = testing)
+confusionMatrix(pred, testing$admit)
+```
+
+The model has an accuracy value of 70.69%. No information rate is given as 70.69%. Basically, what this means is that, if all students were rejected, then the model would be correct 70.69% of the time. 
+
+We can make few changes to improve the performance of the model. 
+```{r}
+trControl <- trainControl(method = "repeatedcv",
+                          number = 10,
+                          repeats = 3,
+                          classProbs = TRUE,
+                          summaryFunction = twoClassSummary)
+```
+
+Class probabilities are need if we want to use ROC for selecting the best model with optimal K
+
+```{r}
+set.seed(222)
+FIT <-  train(admit~.,
+              data = training,
+              method = 'knn',
+              tuneLength = 20,
+              trControl = trControl,
+              preProc = c("center","scale"),
+              metric = "ROC",
+              tuneGrid = expand.grid(k= 1:60))
+```
+
+### Model Performance
+```{r}
+FIT
+```
+
+The results above indicates that we have carried out the k- nearest neighbors with a sample of 284 observations, three predictors(GRA, GPA and RANK) and two classes, "yes" and "no", where yes means the student was admitted and no means the student was not admitted. We have carried out a ten fold cross validation repeated three times. This means that in each cross validation the training data is splited into ten parts, and 9 of them are used in creating the model and the remaining part is used in assessing the performance of the model. In the model above, we have the model accuracy and kappa value. ROC was used to select the optimal model using the largest value. The final value used for the model was k = 30. ROC is the area under the curve. From the model, the area under curve is given as 0.6726901, that is 67.27%. 
+
+### Plot FIT
+```{r}
+plot(FIT)
+```
+
+### View variable Importance
+```{r}
+varImp(FIT)
+```
+
+### Plot the Importance Features
+```{r}
+plot(varImp(FIT))
+```
+
+### Prediction
+```{r}
+pred <- predict(FIT, newdata = testing)
+confusionMatrix(pred, testing$admit)
+```
+
+
+# APPLICATION OF K-NEAREST NEIGHBORS IN REGRESSION
+For the purpose of the training, we will use Boston Housing Data. This data is found in "mlbench" library
+```{r}
+data("Boston")
+str(Boston)
+data <- Boston
+```
+
+### View the First Few Observations
+```{r}
+head(data,5)
+```
+
+The dependent variable of interest is "medv". if you want to more about Boston Housing, use the comand below
+```{r}
+?Boston
+```
+
+Boston Data
+Description
+A data set containing housing values in 506 suburbs of Boston. A data frame with 506 rows and 13 variables.
+
+crim: per capita crime rate by town.
+zn: proportion of residential land zoned for lots over 25,000 sq.ft.
+indus: proportion of non-retail business acres per town.
+chas: Charles River dummy variable (= 1 if tract bounds river; 0 otherwise).
+nox: nitrogen oxides concentration (parts per 10 million).
+rm: average number of rooms per dwelling.
+age: proportion of owner-occupied units built prior to 1940.
+dis: weighted mean of distances to five Boston employment centres.
+rad: index of accessibility to radial highways.
+tax: full-value property-tax rate per $10,000.
+ptratio: pupil-teacher ratio by town.
+lstat: lower status of the population (percent).
+medv: median value of owner-occupied homes in $1000s.
+
+### Data Partition
+```{r}
+set.seed(1234)
+ind <- sample(2, nrow(data), replace = TRUE, prob = c(0.7, 0.3))
+training <- data[ind == 1,]
+testing <- data[ind ==2,]
+```
+
+
+## KNN Model
+```{r}
+trControl <- trainControl(method = 'repeatedcv',
+                          number = 10,
+                          repeats = 3)
+set.seed(333)
+attach(data)
+```
+
+```{r}
+FIT <- train(medv~.,
+             data = training,
+             tuneGrid = expand.grid(k=1:70),
+             method = 'knn',
+             trControl = trControl,
+             preProc = c('center', 'scale'))
+```
+
+
+### Model Performance
+```{r}
+FIT
+```
+
+### Check the model type
+```{r}
+FIT$modelType
+```
+
+#### Obtain the coefficient names
+```{r}
+FIT$coefnames
+```
+
+
+The results above shows that we have run K-Nearest Neighbors with 355 samples and 13 predictors. We used cross validation where ten folds were used and repeated three times. This means that the data is divided into ten folds and only nine folds are used in model estimation and one fold is used for model assessment and validation. From the model RMSE was used to select the optimal model using the smallest value. The final value used for the model was k = 3.
+
+### Plot the model
+```{r}
+plot(FIT, xlab = "Nearest Neighbors", main = "APlot of Root Mean Square Error (RMSE) for the K-Nearest Neighbors")
+```
+
+### View the Model
+```{r}
+FIT
+```
+
+The graph above shows that lowest value of RMASE is found when we have k as 3. After that point, the value of RMASE starts to increase steadily. 
+
+### Variable Importance
+```{r}
+varImp(FIT)
+```
+
+### Plot variable importance
+```{r}
+plot(varImp(FIT), xlab = "Percentage Importance", 
+     ylab ="Variables", main = "Variable Importance for the KNN Model")
+```
+
+
+The output above variables importance in our model from the most important one to the least. The variable "chas" has significant importance in our knn model. In other words, "chas" is the least important variable. 
+
+### Prediction
+```{r}
+pred <- predict(FIT, newdata = testing)
+```
+
+### NOTE
+Because the response variable numeric and continuous, we will calculate the root mean square for assessment. 
+```{r}
+RMSE(pred, testing$medv)
+```
+
+### Make the Plot
+```{r}
+plot(pred, testing$medv)
+```
+
+### We can chooce R-square for Model Evaluation
+```{r}
+FIT <- train(medv~.,
+             data = training,
+             tuneGrid = expand.grid(k=1:70),
+             method = 'knn',
+             metric = 'Rsquared',
+             trControl = trControl,
+             preProc = c('center', 'scale'))
+```
+
+
+### Model Performance
+```{r}
+FIT
+```
+
+```{r}
+plot(FIT)
+```
+
+### Variables Importance
+```{r}
+varImp(FIT)
+```
+
+### Plot variable Importance
+```{r}
+plot(varImp(FIT), xlab = "Percentage Importance", 
+     ylab ="Variables", main = "Variable Importance for the KNN Model")
+```
+
+
+### Prediction
+```{r}
+pred <- predict(FIT, newdata = testing)
+data_pred <- data.frame(testing, pred)
+head(data_pred,5)
+```
+
+### Check the Structure of the Data Set
+```{r}
+str(data_pred)
+```
+
+### Plot the Actual Response Variable and Predicted Values
+```{r}
+library(ggplot2)
+library(ggthemes)
+# Combine data into a data frame
+data <- data.frame(Actual_MEDV = data_pred$medv, Predicted_MEDV = data_pred$pred)
+
+# Create line plot
+ggplot(data, aes(x = 1:nrow(data))) +
+  geom_line(aes(y = Actual_MEDV, color = "Actual MEDV")) +
+  geom_line(aes(y = Predicted_MEDV, color = "Predicted MEDV")) +
+  scale_color_manual(name = "Variable", values = c("Actual MEDV" = "blue", "Predicted MEDV" = "red")) +
+  labs(x = "Time Axis", y = "MEDV", title = "Actual vs Predicted MEDV") +
+  theme_economist()
+
+```
+
+
+### NOTE
+Because the response variable numeric and continuous, we will calculate the root mean square for assessment. 
+```{r}
+RMSE(pred, testing$medv)
+```
+
+### Make the Plot
+```{r}
+plot(pred, testing$medv, xlab = "Prediction", ylab = "medv", main = "The scatter plot of predicted and actual medv")
+```
+
+
+### No Much Improvement.
+Interpreting a k-Nearest Neighbors (k-NN) regression model is somewhat different from interpreting a traditional linear regression model. In k-NN regression, instead of fitting a mathematical equation to your data, the model makes predictions based on the values of the k nearest data points in the training dataset. Here's how you can interpret a k-NN regression model:
+
+## Prediction Process:
+For each data point you want to predict, the k-NN algorithm identifies the k nearest data points in the training dataset based on some distance metric (e.g., Euclidean distance).
+It then calculates the average (or weighted average) of the target values (the values you're trying to predict) for those k nearest data points.
+This average is used as the prediction for the new data point.
+Tuning Parameter (k):
+
+The most important parameter in k-NN regression is "k," which represents the number of nearest neighbors to consider. A small k (e.g., 1 or 3) may result in a model that closely follows the training data but is sensitive to noise. A large k (e.g., 10 or more) may result in a smoother prediction surface but might not capture local variations. The choice of k should be based on cross-validation and the characteristics of your data.
+
+### Distance Metric:
+The choice of distance metric (e.g., Euclidean, Manhattan, etc.) can impact the model's performance. Different distance metrics can lead to different interpretations of "closeness" among data points.
+
+### Non-Linearity:
+Unlike linear regression, k-NN regression can capture non-linear relationships in the data. Interpretation may not involve coefficients or slope values as in linear regression.
+
+### Local vs. Global Patterns:
+k-NN regression captures local patterns in the data. Interpretation involves understanding the local behavior around a prediction point. The model does not provide a global equation that describes the entire dataset.
+
+### Visualizations:
+Visualizations can be helpful for interpretation. Plotting the k nearest neighbors for specific data points can provide insights into why the model made a particular prediction.
+
+### Feature Importance:
+k-NN does not provide feature importance scores like some other models (e.g., Random Forest or Gradient Boosting). However, you can still analyze feature importance indirectly by examining which features are most influential in determining the nearest neighbors.
+
+### Performance Metrics:
+Use appropriate regression evaluation metrics like Mean Absolute Error (MAE), Mean Squared Error (MSE), or R-squared to assess model performance. These metrics can give you a sense of how well the k-NN regression model fits the data.
+
+### Rescaling Features:
+Scaling and normalization of features can significantly affect the results, as k-NN is sensitive to the scale of input variables. Interpretation may involve considering the effects of feature scaling. In summary, interpreting a k-NN regression model involves understanding its prediction process, the choice of hyperparameters (especially k), the impact of distance metrics, and the local nature of the model's predictions. Visualizations and performance metrics play a crucial role in assessing and explaining the model's behavior on your specific dataset.
+
+
+In k-Nearest Neighbors (k-NN) regression, accuracy is not typically used as an evaluation metric because k-NN regression is a type of regression, not classification. Accuracy is more suitable for classification problems where you're predicting discrete class labels.
+
+For regression tasks, you typically use different evaluation metrics to assess the performance of your model. Common metrics for regression tasks include:
+
+### Mean Absolute Error (MAE): 
+It measures the average absolute difference between the predicted and actual values. It is less sensitive to outliers compared to Mean Squared Error.
+
+### Mean Squared Error (MSE): 
+It measures the average of the squared differences between predicted and actual values. It gives higher weight to larger errors.
+
+### Root Mean Squared Error (RMSE): 
+It is the square root of the MSE and provides an interpretable measure of the average error in the same units as the target variable.
+
+### R-squared (R2): 
+It measures the proportion of the variance in the dependent variable that is predictable from the independent variables. A higher R-squared indicates a better fit.
+
+### Compare the Traditional Linear Model to the KNN Model
+```{r}
+library(sjPlot)
+lmodel <- lm(medv~.,data = training,)
+tab_model(lmodel,
+          show.se = TRUE, #show.std = FALSE,
+          show.df = TRUE,
+          show.stat = TRUE,
+          #, auto.label = FALSE,
+          digits = 3,digits.p = 3,digits.rsq = 3,digits.re = 2)
+```
+
+The traditional linear model performed poorly as compared to the kNN. The linear model has an R-square of 0.777 and an adjusted R-square of 0.769, while kNN had an R-square of 0.8059345, which is higher than that of traditional linear model. 
+
+
+# ADDITIONAL EXAMPLE FOR K-NEAREST NEIGHBORS FOR REGRESSION
+### Using k-nearest neighbors to predict a continuous variable
+In this section, I’ll show you how you can use the kNN algorithm for regression, graphically and intuitively. Imagine that you’re not a morning person (perhaps, like me, you don’t have to imagine very hard), and you like to spend as much time in bed as possible. To maximize the amount of time you spend sleeping, you decide to train a machine learning model to predict how long it takes you to commute to work, based on the time you leave the house. It takes you 40 minutes to get ready in the morning, so you hope this model will tell you what time you need to leave the house to get to work on time, and therefore what time you need to wake up. Every day for two weeks, you record the time you leave the house and how long your journey takes. Your journey time is affected by the traffic (which varies across the morning), so your journey length changes, depending on when you leave. An example of what the relationship between departure time and journey length might look. It is however important to note that the kNN algorithm is a lazy learner. In other words, it doesn’t do any work during model training (instead, it just stores the training data); it does all of its work when it makes predictions. When making predictions, the kNN algorithm looks in the training set for the k cases most similar to each of the new, unlabeled data values. Each of those k most similar cases votes on the predicted value of the new data. When using kNN for classification, these votes are for class membership, and the winning vote selects the class the model outputs for the new data. The voting process when using kNN for regression is very similar, except that we take the mean of these k votes as the predicted value for the new data.
+This process is illustrated for our commuting example. If we train a one-nearest neighbor model, the model finds the single case from the training set that is closest to the departure time of each of the new data points, and uses that value as the predicted journey length. If we train a three nearest neighbor model, the model finds the three training cases with departure times most similar to each of the new data points, takes the mean journey length of those nearest cases, and outputs this as the predicted value for the new data. The same applies to any number of k we use to train the model.
+
+### Building your first kNN regression model
+In this section, I’ll teach you how to define a kNN learner for regression, tune the k hyperparameter, and train a model so you can use it to predict a continuous variable. Imagine that you’re a chemical engineer trying to predict the amount of heat released by various batches of fuel, based on measurements you made on each batch. We’re first going to train a kNN model on this task and then compare how it performs to a random forest and an XGBoost model, later in the chapter.
+
+###Loading and exploring the fuel dataset
+The mlr package, conveniently, comes with several predefined tasks to help you experiment with different learners and processes. The dataset we’re going to work with in this chapter is contained inside mlr’s fuelsubset.task. We load this task into our R session the same way we would any built-in dataset: using the data() function. We can then use mlr’s getTaskData() function to extract the data from the task, so we can explore it. As always, we use the as_tibble() function to convert the data frame into a tibble.
+
+```{r}
+library(mlr)
+library(tidyverse)
+data("fuelsubset.task")
+fuel <- getTaskData(fuelsubset.task)
+fuelTib <- as_tibble(fuel)
+fuelTib
+```
+
+We have a tibble containing 129 different batches of fuel and 367 variables/features!. In fact, there are so many variables that I’ve truncated the printout of the tibble to remove the names of the variables that didn’t fit on my console.
+
+*TIP* Run names(fuelTib) to return the names of all the variables in the dataset. This is useful when working with large datasets with too many columns to visualize on the console.
+The heatan variable is the amount of energy released by a certain quantity of fuel when it is combusted (measured in megajoules). The h20 variable is the percentage of
+Listing 12.1 Loading and exploring the fuel data set humidity in the fuel’s container. The remaining variables show how much ultraviolet or near-infrared light of a particular wavelength each batch of fuel absorbs (each variable represents a different wavelength).
+```{r}
+names(fuelTib)
+```
+
+
+```{r}
+fuelUntidy <- fuelTib %>%
+  mutate(id = 1:nrow(.)) %>%
+  gather(key = "variable", value = "absorbance",
+         c(-heatan, -h20, -id)) %>%
+mutate(spectrum = str_sub(variable, 1, 3),
+       wavelength = as.numeric(str_extract(variable, "(\\d)+")))
+fuelUntidy
+```
+
+```{r}
+fuelUntidy %>%
+  ggplot(aes(absorbance, heatan, col = as.factor(wavelength))) +
+  facet_wrap(~ spectrum, scales = "free_x") +
+  geom_smooth(se = FALSE, size = 0.2) +
+  ggtitle("Absorbance vs heatan for each wavelength") +
+  theme_bw() +
+  theme(legend.position = "none")
+
+fuelUntidy %>%
+  ggplot(aes(wavelength, absorbance, group = id, col = heatan)) +
+  facet_wrap(~ spectrum, scales = "free_x") +
+  geom_smooth(se = FALSE, size = 0.2) +
+  ggtitle("Wavelength vs absorbance for each batch") +
+  theme_bw()
+
+fuelUntidy %>%
+  ggplot(aes(h20, heatan)) +
+  geom_smooth(se = FALSE) +
+  ggtitle("Humidity vs heatan") +
+theme_bw()
+```
+
+Data really is beautiful sometimes, isn’t it? In the plots of absorbance against heatan, each line corresponds to a particular wavelength. The relationship between each predictor variable and the outcome variable is complex and nonlinear. There is also a nonlinear relationship between h20 and heatan. In the plots of wavelength against absorbance, each line corresponds to a particular batch of fuel, and the lines show its absorbance of ultraviolet and near-infrared light. The shading of the line corresponds to the heatan value of that batch. It’s difficult to identify patterns in these plots, but certain absorbance profiles seem to correlate with higher and lower heatan values.
+
+Because the predefined fuelsubset.task defines the ultraviolet and near-infrared spectra as functional variables, we’re going to define our own task, treating each wavelength as a separate predictor. We do this, as usual, with the makeRegrTask() function, setting the heatan variable as our target. We then define our kNN learner using the makeLearner() function.
+
+
+```{r}
+library(igraph)
+library(kknn)
+fuelTask <- makeRegrTask(data = fuelTib, target = "heatan")
+kknn <- makeLearner("regr.kknn")
+```
+
+### Tuning the k hyperparameter
+In this section, we’re going to tune k to get the best-performing kNN model possible. Remember that for regression, the value of k determines how many of the nearest neighbors’ outcome values to average when making predictions on new cases. We first define the hyperparameter search space using the makeParamSet() function, and define k as a discrete hyperparameter with possible values 1 through 12. Then we define our search procedure as a grid search (so that we will try every value in the search space), and define a 10-fold cross-validation strategy. As we’ve done many times before, we run the tuning process using the tuneParams() function, supplying the learner, task, cross-validation method, hyperparameter space, and search procedure as arguments.
+
+```{r}
+## Tuning k
+kknnParamSpace <- makeParamSet(makeDiscreteParam("k", values = 1:12))
+gridSearch <- makeTuneControlGrid()
+kFold <- makeResampleDesc("CV", iters = 10)
+tunedK <- tuneParams(kknn, task = fuelTask, 
+                     resampling = kFold,
+                     par.set = kknnParamSpace,
+                     control = gridSearch)
+tunedK
+```
+
+
+We can plot the hyperparameter tuning process by extracting the tuning data with the generateHyperParsEffectData() function and passing this to the plotHyperPars- Effect() function, supplying our hyperparameter ("k") as the x-axis and MSE ("mse.test.mean") as the y-axis. Setting the plot.type argument equal to "line" connects the samples with a line.
+
+### Plotting the tuning process
+```{r}
+knnTuningData <- generateHyperParsEffectData(tunedK)
+plotHyperParsEffect(knnTuningData, x = "k", y = "mse.test.mean",
+                    plot.type = "line") +
+  theme_bw()
+```
+
+We can see that the mean MSE starts to rise as k increases beyond 7, so it looks like our search space was appropriate.
+
+### Training the final, tuned kNN model
+```{r}
+tunedKnn <- setHyperPars(makeLearner("regr.kknn"), par.vals = tunedK$x)
+tunedKnnModel <- train(tunedKnn, fuelTask)
+tunedKnnModel
+summary(tunedKnnModel)
+```
+
+```{r}
+tunedKnnModel$learner
+```
+
+# SUPPORT VECTOR MACHINE
+A Support Vector Machine (SVM) is a versatile and widely-used supervised machine learning algorithm designed for classification and regression tasks. SVM aims to find an optimal hyperplane or decision boundary that best separates data points into different classes or predicts continuous values, while maximizing the margin, which is the distance between the boundary and the nearest data points of each class. What sets SVM apart is its ability to handle high-dimensional data effectively and its flexibility to deal with non-linear relationships in the data through the kernel trick, which allows data to be implicitly mapped into higher-dimensional spaces. In binary classification, SVM seeks to find the hyperplane that best separates the two classes, and in multiclass scenarios, it uses strategies like one-versus-rest (OvR) or one-versus-one (OvO) to extend classification capabilities. SVM has found applications in diverse fields, including text classification, image recognition, and financial prediction, owing to its robustness and effectiveness in modeling complex decision boundaries.
+
+SVM's key concepts include support vectors, which are data points that lie closest to the decision boundary and significantly influence the model, and the regularization parameter (C), which balances the trade-off between achieving a wide margin and minimizing misclassification errors. By maximizing the margin, SVM generally offers good generalization to new, unseen data. However, it can be computationally intensive for large datasets, and its interpretability is limited compared to simpler models like logistic regression. Despite these limitations, SVM remains a valuable tool in machine learning, particularly when dealing with high-dimensional data and complex classification problems, thanks to its ability to find optimal separating hyperplanes in various feature spaces.
+
+Support Vector Machines (SVMs) have several key features and characteristics that make them a powerful and widely-used machine learning algorithm:
+
+E*ffective for High-Dimensional Data:* SVMs are effective in scenarios where the number of features (dimensions) is greater than the number of samples. They excel in high-dimensional spaces, such as text classification or image recognition.
+
+*Optimal Hyperplane:* SVM aims to find the optimal hyperplane that maximizes the margin, which is the distance between the decision boundary and the nearest data points of each class. This leads to better generalization to unseen data.
+
+*Kernel Trick:* SVMs can handle non-linear data by implicitly mapping it into higher-dimensional spaces using kernel functions (e.g., polynomial, radial basis function). This allows SVMs to model complex decision boundaries.
+
+*Sparsity:* SVMs are "sparse" models, meaning only a subset of data points, called support vectors, influence the decision boundary. This makes them memory-efficient and suitable for large datasets.
+
+*Binary and Multiclass Classification:* SVMs can be used for both binary and multiclass classification tasks. Strategies like one-versus-rest (OvR) or one-versus-one (OvO) are employed for multiclass classification.
+
+*Regularization Parameter (C):* The parameter C controls the trade-off between maximizing the margin and minimizing the classification error. Higher C values lead to a narrower margin but fewer misclassifications, while lower C values prioritize a wider margin but may tolerate some misclassifications.
+
+*Robust to Outliers:* SVMs are less sensitive to outliers in the data compared to some other algorithms because the decision boundary is influenced by support vectors rather than all data points.
+
+*Interpretability:* While not as interpretable as linear models like logistic regression, SVMs can provide insights into feature importance through the examination of support vectors and their associated coefficients.
+
+*Versatile:* SVMs are versatile and can be applied to various machine learning tasks, including classification, regression (Support Vector Regression), and outlier detection.
+
+*Well-Defined Theoretical Framework:* SVMs are founded on a well-defined mathematical framework with strong theoretical underpinnings, making them attractive for rigorous analysis.
+
+*Popular in Real-World Applications:* SVMs have been successfully applied in a wide range of real-world applications, including image and text classification, bioinformatics, finance, and more.
+
+*Scalability: *While SVMs can be computationally intensive for large datasets, methods like Stochastic Gradient Descent (SGD) and the use of approximate solvers have been developed to enhance scalability.
+
+Overall, Support Vector Machines offer a powerful tool for both linear and non-linear classification problems, with a strong emphasis on maximizing the margin between classes, robustness, and adaptability to various data types and applications.
+
+In this support vector machine, we are going to use "iris" data set
+## View the data set
+```{r}
+data(iris)
+head(iris,5)
+```
+
+### View the structure of the dataset
+```{r}
+str(iris)
+attach(iris)
+```
+
+The data set has 150 observations, 5 variables, 4 of which are numeric and one categorical variable, that is, species is a factor variable. Using these four numeric variables, we want to build a classification model will help us predict the correct species. We need to load some library including "ggplot2".
+
+Let us make a plot of petal length and petal width
+```{r}
+library(ggplot2)
+qplot(Petal.Length, Petal.Width, data = iris)
+```
+
+Let us color the scatter plot and see if there is a possibility of separation.  
+
+```{r}
+qplot(Petal.Length, Petal.Width, 
+      color = Species, data = iris)
+```
+
+From the scatter plot above, thee is seperation based on the species as shown by different colors. The red one are "setosa", abd the green ones are" versicolor", and lastly the blue ones are "virginica". We can see that there is some seperation since the setosa species are far from the other two. 
+
+Let us make a plot of sepal length and sepal width
+```{r}
+qplot(Sepal.Length, Sepal.Width, 
+      color = Species, data = iris)
+```
+
+## Support Vector Machine
+Let us get a quick review of what is support vector machine. Consider the figure below
+```{r}
+knitr::include_graphics("support.png")
+```
+
+The point points which are color coded are data points for two categories. These are two distinct classes. In other words, we are looking for optimal separating hyperplane between these two classes. We can only achieve that by maximizing the margin around the separating hyperplane. Points that lie on the boundary are called the support vectors. The middle line is the separating hyperplane. In situation where we cannot obtain a linear separator, data points are then projected into to a higher dimensional space so that the data points can be linearly separable. For this project we make use kernels. The program that help us achieve this is called the support vector machine. For this purpose of this demonstration, load the following library; "e1071", which is commonly used for support vector machine. We can now develope a support vector machine 
+
+### Radial Kernel Function
+```{r}
+library(e1071)
+model <- svm(Species~., data = iris)
+summary(model)
+```
+
+The output above gives the formula used. The type used is C-Classification with a "radial " SVM-Kernel. Since we are using Species as our dependent variable which is a factor variable, classification becomes the default type. Otherwise, if our dependent variable was a continuous, we would have a regression analysis in that case. But right now it is a classification. The cost implies that cost of constrained violation and the default is one, gamma is 0.25. The model has 51 support vectors. From the model, 8 support vectors belongs to the first species, 22 belongs to the second species and 21 belongs to the third species. We have three species are these are setosa, versicolor and virginica. Let us plot the results and see what comes out. But since we have four variables, we will to do some modification, otherwise, if we had only two variables (Petal length and Petal width), the code below would be sufficient. 
+
+ 
+
+We will make use of slice for the other two quantitative variables. For the Sepal width we keep the constrain at 3 and sepat length constrained at 4.
+```{r fig.width= 10, fig.height=6}
+plot(model, data = iris, 
+     Petal.Width~Petal.Length,
+     slice = list(Sepal.Width = 3, Sepal.Length = 4))
+```
+
+The above plot shows visualization of the support vector machine. The plot shows the data, support vectors represented by crosses and and the decision boundary. for the three types of species. The lower part of the graphs comprises data points belonging to the first species, the middle one comprises data points belonging to the second species and the upper part comprises data points belonging to the third species. The color represents the predicted class for each species. Like we said, we have 51 support vectors, 8, 22 and 21 belong to the first, second and third species, respectively.  
+
+### Confusion Matrix and Misclassification Error
+```{r}
+library(caret)
+library(lattice)
+pred <- predict(model, iris)
+confusionMatrix(pred, iris$Species)
+```
+
+From the results above, there are were 50 setosa species and the model also predicted that 50 species belongs to setosa. Additionally, the data has 48 versicolor species and the predicted them to belong to versicolor species. Lastly, there are were 48 virginica species and the model predicted the same. However, we also have mis-classification. From the data, we have 2 virginical species but the model predicted them to belong to versicolor species. Similarly, there are were 2 versicolor species but the model predicted that they belong to virginica. However, the model has an accuracy of approximately 97.33%. The mis-classification is approximately 2.67%. It is also good to note that this model used radial Kernel type. 
+
+### Linear Kernel Function 
+Other than radial function, we can use linear function as shown below. 
+```{r}
+model1 <- svm(Species~.,
+             kernel = "linear",
+             data = iris)
+summary(model1)
+```
+
+Now the kernel type is linear and not radial. The number of support vectors have reduced to 29 as compared to the previous 51. In this new model, 2 of the support vectors belong to the first species, 15 belongs to the second species and 12 support vectors belongs to the third species. Let us view the plot and see if there is any change.
+
+
+```{r fig.width= 10, fig.height=6}
+plot(model1, data = iris, 
+     Petal.Width~Petal.Length,
+     slice = list(Sepal.Width = 3, Sepal.Length = 4))
+```
+
+Let us look at the confusion matrix
+```{r}
+pred1 <- predict(model1, iris)
+confusionMatrix(pred1, iris$Species)
+```
+
+In the new model, we have slightly higher mis-classification of approximately 3.33% with the model accuracy of approximately 96.67%.  
+
+### Polynomial Kernel Function
+```{r}
+model2 <- svm(Species~.,
+             kernel = "polynomial",
+             data = iris)
+summary(model2)
+```
+
+Using polynomial kernel function, the model has 54 support vectors where 6, 26 and 22 belonging to first, second and third category, respectively. Let us make the plot
+```{r fig.width= 10, fig.height=6}
+plot(model2, data = iris, 
+     Petal.Width~Petal.Length,
+     slice = list(Sepal.Width = 3, Sepal.Length = 4))
+```
+
+### Confusion Matric and Misclassification Error
+```{r}
+pred2 <- predict(model2, iris)
+confusionMatrix(pred2, iris$Species)
+```
+
+From the model above, the accuracy reduced to 95.33% as compared to the previous model with an increase in mis-classification of approximately 4.67%.  The model classify 7 species to belong in second category while in reality they belong in third category. 
+
+### Sigmoid Kernel Function
+```{r}
+model3 <- svm(Species~.,
+             kernel = "sigmoid",
+             data = iris)
+summary(model3)
+```
+
+The results above represents the training of a Support Vector Machine (SVM) classifier using the sigmoid kernel for a multi-class classification problem. The formula "Species ~ ." suggests that the goal is to predict the "Species" variable using all the other variables in the dataset. This type of SVM is a C-classification, which means it is designed for multi-class classification tasks. The "cost" parameter is set to 1, indicating the trade-off between maximizing the margin and minimizing classification errors. The "coef.0" parameter is set to 0, which is the bias term.
+
+The model has identified 54 support vectors. Support vectors are the data points closest to the decision boundary, and they play a crucial role in defining the decision boundary of the SVM. In this case, there are 6 support vectors for the "setosa" class, 26 support vectors for the "versicolor" class, and 22 support vectors for the "virginica" class.
+
+There are three classes in this classification problem: "setosa," "versicolor," and "virginica." The model has learned to distinguish between these three classes based on the provided features. The sigmoid kernel is a non-linear kernel that can capture complex relationships between features and class labels. Overall, this SVM model with the sigmoid kernel has been trained to classify data into one of these three flower species based on the given dataset.
+
+### Plot
+```{r fig.width=10, fig.height=8}
+plot(model3, data = iris, 
+     Petal.Width~Petal.Length,
+     slice = list(Sepal.Width = 3, Sepal.Length = 4))
+```
+
+### Confusion Matrix
+```{r}
+pred3 <- predict(model3, iris)
+confusionMatrix(pred3, iris$Species)
+```
+
+The confusion matrix and associated statistics provide a comprehensive evaluation of the performance of a classification model, presumably for a multiclass problem (with three classes: setosa, versicolor, and virginica). Here's what each part of the output means:
+
+The confusion matrix displays the counts of true positive, true negative, false positive, and false negative predictions for each class. In this case, the three classes are setosa, versicolor, and virginica. For example, in the first row, it shows that 49 instances of setosa were correctly classified as setosa (true positives), and there were no false positives or false negatives for setosa. In the second row, it shows that 41 instances of versicolor were correctly classified as versicolor (true positives), 1 was incorrectly classified as setosa (false negative), and 7 were incorrectly classified as virginica (false positive). Overall Statistics:
+
+Accuracy is the overall classification accuracy of the model, which is approximately 88.67%. It's the ratio of correctly predicted instances to the total instances. The 95% Confidence Interval (CI) provides a range for the accuracy estimate. The No Information Rate (NIR) represents the accuracy that would be achieved by simply predicting the majority class all the time (0.3333 in this case). The Kappa statistic measures the agreement between actual and predicted classifications, with a value of 0.83 indicating substantial agreement. This model has a lower accuracy as compared to the previous one, with a higher mis-classification error of approximately 11.33%. 
+
+Sensitivity (also known as True Positive Rate or Recall) measures the proportion of true positives for each class. It tells you how well the model is at correctly identifying instances of each class. Specificity measures the proportion of true negatives for each class. It tells you how well the model is at correctly identifying instances not belonging to each class. Pos Pred Value (Positive Predictive Value or Precision) is the proportion of true positives among all predicted positives for each class. Neg Pred Value (Negative Predictive Value) is the proportion of true negatives among all predicted negatives for each class. Prevalence is the proportion of each class in the dataset. Detection Rate is the rate at which the model correctly detects each class. Detection Prevalence is the rate at which the model predicts each class. Balanced Accuracy is a measure that averages sensitivity and specificity and is particularly useful when dealing with imbalanced datasets.
+
+In summary, this analysis provides a detailed breakdown of the model's performance for each class, including its ability to correctly classify instances, along with overall accuracy and additional statistics. It's essential to consider these metrics in the context of your specific problem and objectives to determine the model's effectiveness.
+
+From all the support vector machine models above, signoid kernel function was the worst and radial kernel function was the best. Let us see if we can tune our model to get better classification. 
+
+## Tuning/ Hyperparameter Optimization
+This kind of optimization helps to select the best model. 
+
+```{r}
+set.seed(123)
+t.model <- tune.svm(Species~., data = iris, epsilon = seq(0,1,0.1), cost=2^(2:9)
+                    )
+```
+
+
+The code above is the tune function to tune hyperparameters for a Support Vector Machine (SVM) classifier using the "Species" variable as the target variable and all other available features in the "data" dataset. Specifically, it seems to be tuning two hyperparameters: "epsilon" and "cost."
+
+*tune:* This function is typically used for hyperparameter tuning in R. It takes various arguments to specify the model to be tuned, the data, and the hyperparameter search space.
+
+*svm:* The svm function is the model that you are trying to tune. It's an SVM classifier for classification tasks.
+
+*Species~.:* This formula specifies that you want to predict the "Species" variable based on all other variables in the dataset (denoted by the .).
+
+*data = data:* This argument specifies the dataset from which the model should be trained and validated.
+
+*ranges:* This argument specifies the hyperparameter search space. It appears to be defining a range for two hyperparameters:
+
+*epsilon:* A range from 0 to 1 with a step of 0.1.
+*cost:* A range of values obtained by raising 2 to the power of integers from 2 to 9.
+The tune function will perform a grid search over the specified hyperparameter ranges, training and evaluating the SVM model with different combinations of "epsilon" and "cost." It will likely use some form of cross-validation to assess the model's performance for each combination of hyperparameters.
+
+After running this code, you should get the best combination of hyperparameters that optimizes the model's performance on the dataset, as well as the corresponding model performance metrics for each combination. This is a common approach to find the best hyperparameters for machine learning models.
+
+### Plot the Model
+```{r fig.width=10, fig.height=8}
+plot(t.model)
+```
+
+The graph give the performance of SVM of the two parameters, "cost" and "epsilon". Darker regions implies better results. From the graph if reduce the cost value we can as well get better results instead of going all the way to 2^9. 
+
+```{r}
+set.seed(123)
+t.model1 <- tune.svm(Species~., data = iris, epsilon = seq(0,1,0.1), cost=2^(2:7)
+                     )
+```
+
+
+### Now make the plot
+```{r fig.width=10, fig.height=8}
+plot(t.model1)
+```
+
+The model seems to perform quite better. Let us now get the summary of this model
+```{r}
+summary(t.model1)
+```
+
+The sampling method is 10 fold cross validation with the best parameters as epsilon = 0 and cost = 8. Using these results we can choose our best model. 
+```{r}
+mymodel <- t.model1$best.model
+summary(mymodel)
+```
+
+The output above represents the best-tuned Support Vector Machine (SVM) model for a classification task with three classes (setosa, versicolor, virginica). Here's an explanation of the key details:
+
+*Model Type:*
+The model type is C-classification, indicating that it's a classification model.
+
+*SVM Kernel:*
+The best-tuned SVM model uses the radial kernel. The radial kernel, also known as the Radial Basis Function (RBF) kernel, is a popular choice for SVMs as it can capture complex, non-linear decision boundaries effectively.
+
+*Hyperparameters:*
+
+The best-tuned hyperparameters are:
+Cost: 8
+Epsilon: The value of epsilon is not explicitly mentioned in this output, but it may have been chosen based on the tuning process.
+
+*Number of Support Vectors:*
+The model has 35 support vectors in total. 6 support vectors belong to the setosa class. 15 support vectors belong to the versicolor class. 14 support vectors belong to the virginica class.
+
+*Number of Classes:*
+There are three classes in this classification problem: setosa, versicolor, and virginica.
+Levels:
+
+This section lists the levels or class labels for the target variable, which are setosa, versicolor, and virginica. The best-tuned SVM model is selected based on the hyperparameters that maximize its performance on the training dataset, typically through techniques like cross-validation. In this case, the radial kernel and a cost value of 8 have been identified as the optimal hyperparameters. These hyperparameters are chosen to strike a balance between achieving a good fit to the training data and preventing overfitting. The number of support vectors indicates that the model is relying on a relatively small subset of the training data to define the decision boundary. This can be beneficial for generalization and model simplicity.
+
+Overall, this best-tuned SVM model is designed to classify new data points into one of the three classes (setosa, versicolor, or virginica) using the radial kernel and the specified cost parameter, which have been determined as the optimal choices through the tuning process.
+
+### Plot the Best Model
+```{r fig.width=10, fig.height=8}
+plot(mymodel, data = iris, 
+    Petal.Width~Petal.Length,
+    slice = list(Sepal.Width = 3, Sepal.Length = 4))
+```
+
+### Confusion Matrix and Misclassification Error
+```{r}
+pred4 <- predict(mymodel, iris)
+confusionMatrix(pred4, iris$Species)
+```
+
+The confusion matrix provided illustrates the performance of a support vector machine (SVM) model in classifying iris species into three categories: setosa, versicolor, and virginica. Each cell in the matrix represents the number of instances where the predicted class matches the true class. In this case, the SVM model achieved high accuracy, with only a few misclassifications. For instance, all 50 instances of setosa were correctly classified, as were 48 out of 50 instances of versicolor and all 50 instances of virginica. This indicates that the model generally performs well across all classes.
+
+Furthermore, the overall statistics provide additional insights into the model's performance. The accuracy of 0.9867 indicates that the model correctly classified approximately 98.67% of the instances in the dataset. Additionally, the 95% confidence interval (CI) suggests that the true accuracy of the model lies within the range of 95.27% to 99.84%. These results indicate a high level of confidence in the model's accuracy. The kappa statistic, which measures the agreement between the predicted and actual classes while accounting for the possibility of agreement by chance, is 0.98, indicating almost perfect agreement between the model's predictions and the true classes.
+
+Examining the statistics by class provides a more detailed understanding of the model's performance for each iris species. Sensitivity, also known as the true positive rate, measures the proportion of actual positives that are correctly identified by the model. In this case, the model achieved a sensitivity of 1.0000 for setosa and virginica, indicating that it correctly identified all instances of these species. For versicolor, the sensitivity is slightly lower at 0.9600, indicating that a small proportion of versicolor instances were misclassified as another species. Specificity, on the other hand, measures the proportion of actual negatives that are correctly identified by the model. The model achieved high specificity for all classes, with values close to 1.0000, indicating that it rarely misclassifies instances from other classes as belonging to a specific class.
+
+Moreover, the positive predictive value (PPV) measures the proportion of instances predicted as positive that are correctly classified. The PPV values are high for all classes, indicating that when the model predicts a particular species, it is highly likely to be correct. The negative predictive value (NPV), which measures the proportion of instances predicted as negative that are correctly classified, is also high for all classes. Prevalence refers to the proportion of instances belonging to a specific class in the dataset. Detection rate and detection prevalence provide additional insights into the model's performance, indicating the rate at which the model correctly detects instances of each class and the proportion of instances in the dataset that are correctly classified, respectively. Lastly, balanced accuracy considers the sensitivity and specificity of the model across all classes and provides a single metric to evaluate overall model performance. In this case, the balanced accuracy values are high for all classes, further indicating the robustness of the SVM model in classifying iris species. Overall, the results suggest that the SVM model is highly effective in distinguishing between different iris species and performs well across all classes.
+
+# PRINCIPAL COMPONENT ANALYSIS
+Principal Component Analysis (PCA) is a widely used dimensionality reduction technique in data analysis and machine learning. It aims to simplify complex datasets while preserving as much of the original information as possible. PCA works by transforming the original features into a new set of orthogonal (uncorrelated) features called principal components. These components are ordered in such a way that the first component explains the maximum variance in the data, the second component explains the second most, and so on.
+
+The first step in PCA involves centering the data by subtracting the mean from each feature, ensuring that the data has a mean of zero. Then, PCA calculates the covariance matrix of the centered data, which captures the relationships between the features. The eigenvectors and eigenvalues of this covariance matrix are computed. The eigenvectors represent the direction of maximum variance in the data, and the eigenvalues indicate the amount of variance explained by each eigenvector. These eigenvectors are the principal components, and they form an orthogonal basis for the data.
+
+In practice, PCA is used for various purposes, such as data compression, visualization, and noise reduction. By retaining only a subset of the top principal components that explain most of the variance, you can reduce the dimensionality of the data while maintaining its essential structure. This can be particularly useful for visualizing high-dimensional data or for speeding up machine learning algorithms that suffer from the curse of dimensionality. However, it's essential to keep in mind that PCA assumes linear relationships between variables, and it may not work well for data with nonlinear dependencies.
+
+In summary, PCA is a powerful technique for dimensionality reduction that transforms high-dimensional data into a lower-dimensional representation while preserving as much variance as possible. It relies on the computation of eigenvectors and eigenvalues of the covariance matrix and can be applied to a wide range of data analysis tasks, making it a fundamental tool in the toolkit of data scientists and machine learning practitioners.
+
+## IRIS DATA SET
+The Iris dataset is a well-known dataset in the field of machine learning and statistics. It was introduced by the British biologist and statistician Ronald A. Fisher in 1936. The dataset consists of 150 samples of iris flowers from three different species: Setosa, Versicolor, and Virginica. Each sample has four features: sepal length, sepal width, petal length, and petal width, all measured in centimeters. The primary purpose of this dataset is to serve as a benchmark for classification and pattern recognition algorithms. Researchers often use it for tasks like supervised learning, clustering, and data visualization. It's a simple and widely used dataset for practicing and demonstrating various machine learning techniques.
+```{r}
+data <- iris
+head(data,5)
+```
+
+### Check the structure
+```{r}
+str(data)
+```
+
+We are going to use Iris data with 150 observations with 5 variables. Among the five variable four are numeric with one categorical variable. Check the summary of the data set using the command below
+```{r}
+summary(data)
+```
+
+The variable we are seeing have different scales, it therefore a good idea to normalize the data. Data normalization help in ensuring that one variable does not overshadow other variables. For the species variable, each species has fifty observations. 
+
+### Data Partitioning
+This is fist and most important step in machine learning. Partitioning the data into training and testing. 
+```{r}
+set.seed(123)
+ind <- sample(2, nrow(data),
+              replace = TRUE,
+              prob = c(0.8, 0.2))
+training <- data[ind == 1,] ## this is the training data set
+testing <- data[ind ==2,] ### this is the testing data set
+```
+
+We are going make use of the variable "psych"
+```{r}
+library(psych)
+```
+
+Now, we want to see the correlation among independent variables. 
+```{r}
+pairs.panels(training[,-5],
+             gap = 0,
+             bg = c("red","yellow","blue")[training$Species],
+             pch = 21)
+```
+
+This the plot that we get with low lower triangular part giving the scatter plot and species are color coded and the part triangular part give the correlation coefficient. The correlation coefficient among independent variables is very high, that give rise to multicollinearity problem. In such cases, the estimate will be unstable with inaccutae predictions. One way of handling such cases is the application of principal component analysis. 
+
+## Principal Component Analysis
+The use of center and scale as TRUE helps to ensure that before performance of the principal component analysis, all the four variables are normalized, that is, with a mean of zero and a variance of one. 
+```{r}
+pc <- prcomp(training[,-5],
+             center = TRUE,
+             scale. = TRUE)
+```
+
+Check the attributes stored in pc object
+```{r}
+attributes(pc)
+```
+
+We now check what is contained in all the attributes, for example we can check what is contained in center attribute
+```{r}
+pc$center
+```
+
+### Check from the training data set
+```{r}
+mean(training$Sepal.Length)
+```
+
+```{r}
+pc$scale
+sd(training$Sepal.Length)
+```
+
+### Print Object pc
+```{r}
+print(pc)
+```
+
+When we print pc, we get standard deviation and rotations which are also called loadings. Because we have four variable, we will have four principal components, that is PC1, C2, PC3, and PC4. Each principal component is a normalized linear combinations of the original variable. Rotations of loadings are the coefficients of continous variables. The values we are seeing in the matrix above will lie between -1 and 1. From the results above, we can see that PC1 increases as sepal length, petal length and petal width increases. While on the other hand, as PC1 increases, Sepal width decreases.
+
+### Summary of Principal Components
+```{r}
+summary(pc)
+```
+
+From the results above, the principal component 1 (PC1) captures the majority of the variability (74.28%) while PC2 capture 21.67%, PC3 captures 3.515% and finally PC4 captures 0.539%. Again looking at the cumulative proportion, when we reach PC2, mores than 95% of the variability has been explained (95.84%). Principal 3 and 4 do not play impotant role in terms of capturing the variability in independent variables. We can now say that PC1 and PC2 captures the majority of the variability. 
+
+### Orthogonality of the Principal Component
+The orthogonality of principal components is a fundamental concept in Principal Component Analysis (PCA) and plays a crucial role in the dimensionality reduction process. In PCA, the goal is to find a set of new orthogonal axes (principal components) in the data space that captures the maximum variance. Here's a detailed explanation of why these principal components are orthogonal:
+
+*Centering the Data:* PCA begins by centering the data, which means subtracting the mean of each feature from the data points. This step ensures that the data has a mean of zero for each feature, which simplifies subsequent calculations.
+
+*Covariance Matrix:* The next step in PCA involves calculating the covariance matrix of the centered data. The covariance matrix is a square matrix where each element represents the covariance between two features. Importantly, the covariance matrix is symmetric, meaning that the covariance between feature A and feature B is the same as the covariance between feature B and feature A.
+
+*Eigenvalue Decomposition:* PCA proceeds by performing eigenvalue decomposition on the covariance matrix. This involves finding the eigenvalues and corresponding eigenvectors of the matrix. The eigenvectors are the directions in the original feature space, and the eigenvalues represent the amount of variance explained by each eigenvector.
+
+*Orthogonality Emerges:* The key observation is that the eigenvectors (principal components) obtained from the eigenvalue decomposition of the covariance matrix are orthogonal to each other. This orthogonality arises from the properties of the covariance matrix. Here's why:
+
+### The covariance matrix is symmetric, as mentioned earlier.
+*Symmetric matrices always have orthogonal eigenvectors.*
+In other words, the eigenvectors extracted from a symmetric matrix are perpendicular to each other.
+Orthogonal Principal Components: As a result of this property, the principal components obtained from PCA are orthogonal axes in the original feature space. This orthogonality means that they are uncorrelated with each other, capturing different directions of maximum variance in the data. The first principal component represents the direction of maximum variance, the second principal component represents the second most significant variance, and so on.
+
+*Dimensionality Reduction:* The orthogonality of principal components allows for efficient dimensionality reduction. By selecting a subset of the principal components and projecting the data onto these components, you can reduce the dimensionality of the data while preserving most of its variance. This is particularly valuable in cases where the original data has a high dimensionality, as it simplifies analysis and visualization.
+
+In summary, the orthogonality of principal components in PCA emerges from the properties of the covariance matrix, which is symmetric. This orthogonality ensures that the principal components capture different directions of maximum variance in the data, making PCA a powerful technique for dimensionality reduction and data analysis.
+
+### Create the Scatter Plot
+We are going to use pairs.panels() function, the components are stored in x
+```{r}
+pairs.panels(pc$x,
+             gap = 0,
+             bg = c("red","yellow","blue")[training$Species],
+             pch = 21)
+```
+
+The correlation correlation coefficients are zero, implying that there is no correlation between the four independent variables. Since the principal components are orthogonal to each other, the correlation between them is always zero. This helps us to get rid of multicollinearity problem. 
+
+### Bi-plot
+```{r fig.width=10, fig.height=10}
+library(devtools)
+library(ggbiplot)
+g <- ggbiplot(pc,
+              obs.scale = 1,
+              var.scale = 1,
+              groups = training$Species,
+              ellipse = TRUE,
+              circle = TRUE,
+              ellipse.prob = 0.68)
+g <- g + scale_color_discrete(name = '')
+g <- g + theme(legend.direction = 'horizontal',
+               legend.position =  'top') 
+print(g)
+```
+
+On the x-axis we have PC1 which explained 74.3% of the variability in the independent variable, while on y-axis we have PC2 which explained approximately 21.7% of the variability in independent variables. Species are color coded as we see. The ellipse are made in a way that it can capture 68% of the data, as seen the code above. The distance from one arrow to the other, tell more about the correlation between the two variables. For instance, the correlation between Petal Length and Petal Width are strongly correlated. You can check from the previous (first) correlation graph. Similarly, Sepal length seems to have a high correlation with Petal length and petal width. However the correlation between Sepal width and all the other is very low. Additionally, the correlation between PC1 and Sepal length, petal length and petal with is positive while Sepal width and PC1 have a negative correlation. It is important to note that PC2 has a negative correlation with all the variables. However, it is good to note that PC2 has a higher negative correlation with Sepal width. 
+
+## Prediction With Principal Components
+```{r}
+trg <- predict(pc, training)
+head (trg,20)
+```
+
+### Add the PCs to our training data
+```{r}
+trg <- data.frame(trg, training[5])
+head(trg,5)
+```
+
+### Add the PCs to our testing data
+```{r}
+tst <- predict(pc, testing)
+tst <- data.frame(tst, testing[5])
+head(tst,5)
+```
+
+Our data is now ready for further analysis, in this case, we are going to use multinomial logistic regression model with PCs. We are going to use PC1 and PC2 only because they have more than 95% of the variability capture
+```{r}
+library(nnet)
+trg$Species <- relevel(trg$Species, ref = "setosa")
+mymodel <- multinom(Species~ PC1 + PC2, data = trg)
+summary(mymodel)
+```
+
+### Confusion Matric and Misclassification Error
+```{r}
+p <- predict(mymodel, trg)
+confusionMatrix(p, trg$Species)
+```
+
+### Interpretation
+The provided information represents the performance evaluation of a classification model through a confusion matrix and various statistical metrics. The confusion matrix reveals that the model has correctly identified 39 samples of the "setosa" class, 38 samples of the "versicolor" class, and 35 samples of the "virginica" class, with very few misclassifications. Overall, the model demonstrates a high accuracy of 92.56%, significantly outperforming the No Information Rate (NIR) of 35.54%. The Kappa statistic also indicates substantial agreement between predictions and actual values. In a class-specific analysis, the model shows good sensitivity, specificity, positive predictive value (PPV), and negative predictive value (NPV) across all classes, reflecting its ability to correctly classify samples from each class. Additionally, the balanced accuracy metric indicates a well-balanced performance across classes. Overall, this model appears to perform impressively well in classifying the three classes, with a particular strength in distinguishing the "setosa" class and reasonable performance in the "versicolor" and "virginica" classes.
+
+### Confusion Matrix and Misclassification on the Testing Data
+```{r}
+p1 <- predict(mymodel, tst)
+confusionMatrix(p1, tst$Species)
+```
+
+## PALMER PENGUINS DATA SET
+```{r}
+library(palmerpenguins)
+head(penguins,5)
+attach(penguins)
+```
+
+```{r}
+data <- data.frame(bill_length_mm, bill_depth_mm, flipper_length_mm, body_mass_g, species)
+head(data,6)
+```
+
+### Remove the Missing Observations
+```{r}
+data <- na.omit(data)
+head(data,6)
+```
+
+### Check the Structure of the Data set
+```{r}
+str(data)
+```
+
+
+We are going to use Iris data with 150 observations with 5 variables. Among the five variable four are numeric with one categorical variable. Check the summary of the data set using the command below
+```{r}
+summary(data)
+```
+
+The variable we are seeing have different scales, it therefore a good idea to normalize the data. Data normalization help in ensuring that one variable does not overshadow other variables. For the species variable, each species has fifty observations. 
+
+### Data Partitioning
+This is fist and most important step in machine learning. Partitioning the data into training and testing. 
+```{r}
+set.seed(123)
+ind <- sample(2, nrow(data),
+              replace = TRUE,
+              prob = c(0.8, 0.2))
+training <- data[ind == 1,] ## this is the training data set
+testing <- data[ind ==2,] ### this is the testing data set
+```
+
+We are going make use of the variable "psych"
+```{r}
+library(psych)
+```
+
+Now, we want to see the correlation among independent variables. 
+```{r}
+pairs.panels(training[,-5],
+             gap = 0,
+             bg = c("red","yellow","blue")[training$Species],
+             pch = 21)
+```
+
+This the plot that we get with low lower triangular part giving the scatter plot and species are color coded and the part triangular part give the correlation coefficient. The correlation coefficient among independent variables is very high, that give rise to multicollinearity problem. In such cases, the estimate will be unstable with inaccutae predictions. One way of handling such cases is the application of principal component analysis. 
+
+## Principal Component Analysis
+The use of center and scale as TRUE helps to ensure that before performance of the principal component analysis, all the four variables are normalized, that is, with a mean of zero and a variance of one. 
+```{r}
+pc <- prcomp(training[,-5],
+             center = TRUE,
+             scale. = TRUE)
+```
+
+Check the attributes stored in pc object
+```{r}
+attributes(pc)
+```
+
+We now check what is contained in all the attributes, for example we can check what is contained in center attribute
+```{r}
+pc$center
+```
+
+### Check from the training data set
+```{r}
+mean(training$bill_length_mm)
+```
+
+```{r}
+pc$scale
+sd(training$bill_length_mm)
+```
+
+### Print Object pc
+```{r}
+print(pc)
+```
+
+When we print pc, we get standard deviation and rotations which are also called loadings. Because we have four variable, we will have four principal components, that is PC1, C2, PC3, and PC4. Each principal component is a normalized linear combinations of the original variable. Rotations of loadings are the coefficients of continous variables. The values we are seeing in the matrix above will lie between -1 and 1. From the results above, we can see that PC1 increases as sepal length, petal length and petal width increases. While on the other hand, as PC1 increases, Sepal width decreases.
+
+### Summary of Principal Components
+```{r}
+summary(pc)
+```
+
+From the results above, the principal component 1 (PC1) captures the majority of the variability (74.28%) while PC2 capture 21.67%, PC3 captures 3.515% and finally PC4 captures 0.539%. Again looking at the cumulative proportion, when we reach PC2, mores than 95% of the variability has been explained (95.84%). Principal 3 and 4 do not play impotant role in terms of capturing the variability in independent variables. We can now say that PC1 and PC2 captures the majority of the variability. 
+
+### Orthogonality of the Principal Component
+The orthogonality of principal components is a fundamental concept in Principal Component Analysis (PCA) and plays a crucial role in the dimensionality reduction process. In PCA, the goal is to find a set of new orthogonal axes (principal components) in the data space that captures the maximum variance. Here's a detailed explanation of why these principal components are orthogonal:
+
+*Centering the Data:* PCA begins by centering the data, which means subtracting the mean of each feature from the data points. This step ensures that the data has a mean of zero for each feature, which simplifies subsequent calculations.
+
+*Covariance Matrix:* The next step in PCA involves calculating the covariance matrix of the centered data. The covariance matrix is a square matrix where each element represents the covariance between two features. Importantly, the covariance matrix is symmetric, meaning that the covariance between feature A and feature B is the same as the covariance between feature B and feature A.
+
+*Eigenvalue Decomposition:* PCA proceeds by performing eigenvalue decomposition on the covariance matrix. This involves finding the eigenvalues and corresponding eigenvectors of the matrix. The eigenvectors are the directions in the original feature space, and the eigenvalues represent the amount of variance explained by each eigenvector.
+
+*Orthogonality Emerges:* The key observation is that the eigenvectors (principal components) obtained from the eigenvalue decomposition of the covariance matrix are orthogonal to each other. This orthogonality arises from the properties of the covariance matrix. Here's why:
+
+### The covariance matrix is symmetric, as mentioned earlier.
+*Symmetric matrices always have orthogonal eigenvectors.*
+In other words, the eigenvectors extracted from a symmetric matrix are perpendicular to each other.
+Orthogonal Principal Components: As a result of this property, the principal components obtained from PCA are orthogonal axes in the original feature space. This orthogonality means that they are uncorrelated with each other, capturing different directions of maximum variance in the data. The first principal component represents the direction of maximum variance, the second principal component represents the second most significant variance, and so on.
+
+*Dimensionality Reduction:* The orthogonality of principal components allows for efficient dimensionality reduction. By selecting a subset of the principal components and projecting the data onto these components, you can reduce the dimensionality of the data while preserving most of its variance. This is particularly valuable in cases where the original data has a high dimensionality, as it simplifies analysis and visualization.
+
+In summary, the orthogonality of principal components in PCA emerges from the properties of the covariance matrix, which is symmetric. This orthogonality ensures that the principal components capture different directions of maximum variance in the data, making PCA a powerful technique for dimensionality reduction and data analysis.
+
+### Create the Scatter Plot
+We are going to use pairs.panels() function, the components are stored in x
+```{r}
+pairs.panels(pc$x,
+             gap = 0,
+             bg = c("red","yellow","blue")[training$Species],
+             pch = 21)
+```
+
+The correlation correlation coefficients are zero, implying that there is no correlation between the four independent variables. Since the principal components are orthogonal to each other, the correlation between them is always zero. This helps us to get rid of multicollinearity problem. 
+
+### Bi-plot
+```{r fig.width=10, fig.height=10}
+library(devtools)
+library(ggbiplot)
+g <- ggbiplot(pc,
+              obs.scale = 1,
+              var.scale = 1,
+              groups = training$species,
+              ellipse = TRUE,
+              circle = TRUE,
+              ellipse.prob = 0.68)
+g <- g + scale_color_discrete(name = '')
+g <- g + theme(legend.direction = 'horizontal',
+               legend.position =  'top') 
+print(g)
+```
+
+On the x-axis we have PC1 which explained 74.3% of the variability in the independent variable, while on y-axis we have PC2 which explained approximately 21.7% of the variability in independent variables. Species are color coded as we see. The ellipse are made in a way that it can capture 68% of the data, as seen the code above. The distance from one arrow to the other, tell more about the correlation between the two variables. For instance, the correlation between Petal Length and Petal Width are strongly correlated. You can check from the previous (first) correlation graph. Similarly, Sepal length seems to have a high correlation with Petal length and petal width. However the correlation between Sepal width and all the other is very low. Additionally, the correlation between PC1 and Sepal length, petal length and petal with is positive while Sepal width and PC1 have a negative correlation. It is important to note that PC2 has a negative correlation with all the variables. However, it is good to note that PC2 has a higher negative correlation with Sepal width. 
+
+## Prediction With Principal Components
+```{r}
+trg <- predict(pc, training)
+head (trg,20)
+```
+
+### Add the PCs to our training data
+```{r}
+trg <- data.frame(trg, training[5])
+head(trg,5)
+```
+
+### Add the PCs to our testing data
+```{r}
+tst <- predict(pc, testing)
+tst <- data.frame(tst, testing[5])
+head(tst,5)
+```
+
+Our data is now ready for further analysis, in this case, we are going to use multinomial logistic regression model with PCs. We are going to use PC1, PC2 and PC3 only because they have more than 95% of the variability capture
+```{r}
+library(nnet)
+trg$species <- relevel(trg$species, ref = "Adelie")
+mymodel <- multinom(species~ PC1 + PC2 + PC3, data = trg)
+summary(mymodel)
+```
+
+### Confusion Matric and Misclassification Error
+```{r}
+p <- predict(mymodel, trg)
+confusionMatrix(p, trg$species)
+```
+
+### Interpretation
+The provided information represents the performance evaluation of a classification model through a confusion matrix and various statistical metrics. The confusion matrix reveals that the model has correctly identified 39 samples of the "setosa" class, 38 samples of the "versicolor" class, and 35 samples of the "virginica" class, with very few misclassifications. Overall, the model demonstrates a high accuracy of 92.56%, significantly outperforming the No Information Rate (NIR) of 35.54%. The Kappa statistic also indicates substantial agreement between predictions and actual values. In a class-specific analysis, the model shows good sensitivity, specificity, positive predictive value (PPV), and negative predictive value (NPV) across all classes, reflecting its ability to correctly classify samples from each class. Additionally, the balanced accuracy metric indicates a well-balanced performance across classes. Overall, this model appears to perform impressively well in classifying the three classes, with a particular strength in distinguishing the "setosa" class and reasonable performance in the "versicolor" and "virginica" classes.
+
+### Confusion Matrix and Misclassification on the Testing Data
+```{r}
+p1 <- predict(mymodel, tst)
+confusionMatrix(p1, tst$species)
+```
+
+# ADDITIONAL EXAMPLE FOR PRINCIPAL COMPONENT ANALYSIS
+In this section, we’ll turn the PCA theory we just covered into skills by reducing the dimensions of a dataset, using PCA. Imagine that you work for the Swiss Federal Department of Finance (due to your love of money, chocolate, cheese, and political neutrality). The department believes that a large number of counterfeit Swiss bankotes are in circulation, and it’s your job to find a way of identifying them. Nobody has looked into this before, and there is no labeled data to go on. So you ask 200 of your colleagues to each give you a banknote (you promise to give them back), and you measure the dimensions of each note. You hope that there will be some discrepancies between genuine notes and counterfeit ones that you may be able to identify using PCA.
+
+In this section, we’ll tackle this problem by
+1 Exploring and plotting the original dataset before PCA
+2 Using the prcomp() function to learn the principal components from the data
+3 Exploring and plotting the result of the PCA model
+
+### Loading and exploring the banknote dataset
+We’ll start by loading the tidyverse packages, loading the data from the mclust package, and converting the data frame into a tibble. We have a tibble containing 200 banknotes with 7 variables.
+```{r}
+library(tidyverse)
+library(mclust)
+data(banknote, package = "mclust")
+swissTib <- as_tibble(banknote)
+swissTib
+```
+
+## Frequency
+```{r}
+frq(swissTib, Status)
+```
+
+The keen-eyed among you may have noticed that this tibble is, in fact, labeled. We have the variable Status telling us whether each note is genuine or counterfeit. This is purely for teaching purposes; we’re going to exclude it from the PCA analysis but map the labels onto the final principal components later, to see whether the PCA model separates the classes. In situations where I have a clear outcome variable, I often plot each of my predictor
+variables against the outcome. 
+In unsupervised learning situations, we don’t have an outcome variable, so I prefer to plot all variables against each other (provided I don’t have so many variables as to prohibit
+doing so). We can do this easily using the ggpairs() function from the GGally package, which you may need to install first. We pass our tibble as the first argument to the ggpairs() function, and then we supply any additional aesthetic mappings by passing ggplot2’s aes() function to the mapping argument. Finally, we add a theme_bw() layer to add the black-and-white theme.
+```{r fig.width=12, fig.height=6}
+library(GGally)
+ggpairs(swissTib, mapping = aes(col = Status)) +
+  theme_bw()
+```
+
+The resulting plot is shown above. The output from ggpairs() takes a little getting used to, but it draws a different kind of plot for each combination of variable types. For example, along the top row of facets are box plots showing the distribution of each continuous variable against the categorical variable. We get the same thing in histogram form down the left column of facets. The diagonal facets show the distributions of values for each variable, ignoring all others. Finally, dot plots shown the bivariate relationships between pairs of continuous variables.
+
+### Performing PCA
+In this section, we’re going to use the PCA algorithm to learn the principal components of our banknote dataset. To do this, I’ll introduce you to the prcomp() function from the stats package that comes with your base R installation. Once we’ve done this, we’ll inspect the output of this function to interpret the component scores of the principal components. I’ll then show you how to extract and interpret variable loadings from the principal components, which tell us how much each original variable correlates with each principal component.
+
+```{r}
+attach(swissTib)
+pca <- prcomp(swissTib[,-1],
+             center = TRUE,
+             scale. = TRUE)
+print(pca)
+summary(pca)
+```
+
+### Calculating variable loadings
+```{r}
+knitr::kable(map_dfc(1:6, ~pca$rotation[, .] * sqrt(pca$sdev ^ 2)[.]))
+```
+
+We can interpret these values as Pearson correlation coefficients, so we can see that the Length variable has very little correlation with PC1 (0.012) but a very strong negative correlation with PC2 (–0.922). This helps us conclude that, on average, cases with a small component score for PC2 have a larger Length.
+
+### Plotting the result of our PCA
+```{r}
+library(factoextra)
+pcaDat <- get_pca(pca)
+fviz_pca_biplot(pca, label = "var")
+fviz_pca_var(pca)
+fviz_screeplot(pca, addlabels = TRUE, choice = "eigenvalue")
+fviz_screeplot(pca, addlabels = TRUE, choice = "variance")
+```
+
+When deciding how many principal components to retain, there are a few rules of thumb. One is to keep the principal components that cumulatively explain at least 80% of the variance. Another is to retain all principal components with eigenvalues of at least 1; the mean of all the eigenvalues is always 1, so this results in retaining principal components that contain more information than the average. A third rule of thumb is to look for an “elbow” in the scree plot and exclude principal components beyond the elbow (although there is no obvious elbow in our example). Instead of relying too much on these rules of thumb, I look at my data projected onto the principal components, and consider how much information I can tolerate losing for my application. If I’m applying PCA to my data before applying a machine learning algorithm to it, I prefer to use automated feature-selection methods, as we did in previous chapters, to select the combination of principal components that results in the best performance. Finally, let’s plot our first two principal components against each other and see how well they’re able to separate the genuine and counterfeit banknotes. We first mutate the original dataset to include a column of component scores for PC1and PC2 (extracted from our pca object using $x). We then plot the principal components against each other and add a color aesthetic for the Status variable.
+
+```{r}
+swissPca <- swissTib %>% 
+  mutate(PC1 = pca$x[, 1], PC2 = pca$x[, 2])
+
+head(swissPca,5)
+
+ggplot(swissPca, aes(PC1, PC2, col = Status)) +
+  geom_point() +
+  theme_bw()
+```
+
+The resulting plot is shown in figure above. We started with six continuous variables and condensed most of that information into just two principal components that contain enough information to separate the two clusters of banknotes! If we didn’t have labels, having identified different clusters of data, we would now try to understand what those two clusters were, and perhaps come up with a way of discriminating genuine banknotes from counterfeits.
+
+### Prediction using Multinomial Logistic Regression
+```{r}
+swissPca$Status <- relevel(swissPca$Status, ref = "genuine")
+mymodel <- multinom(Status~ PC1 + PC2, data = swissPca)
+summary(mymodel)
+
+```
+
+```{r}
+p3 <- predict(mymodel, swissPca)
+confusionMatrix(p3, swissPca$Status)
+```
+
+We have our PCA model, but what do we do when we get new data? Well, because the eigenvectors describe exactly how much each variable contributes to the value of each principal component, we can simply calculate the component scores of new data (including centering and scaling, if we performed this as part of the model). Let’s generate some new data to see how this works in practice. In listing 13.7, we first define a tibble consisting of two new cases, and all the same variables entered into our PCA model. To calculate the component scores of these new cases, we simply use the predict() function, passing the model as the first argument and the new data as the second argument. As we can see, the predict() function returns both cases’ component scores for each of the principal components.
+
+```{r}
+newBanknotes <- tibble(
+  Status = c("counterfeit","counterfeit","genuine","genuine"),
+  Length = c(214, 216, 220, 220),
+  Left = c(130, 128, 132, 125),
+  Right = c(132, 129, 130, 125),
+  Bottom = c(12, 7, 10, 11),
+  Top = c(12, 8, 13, 10),
+  Diagonal = c(138, 142, 137, 140)
+)
+
+head(newBanknotes,5)
+```
+
+```{r}
+tst1 <- predict(pca, newBanknotes)
+as.data.frame(tst1)
+```
+
+```{r}
+tst1 <- data.frame(newBanknotes[1],tst1)
+tst1$Status <- as.factor(tst1$Status)
+tst1
+```
+
+```{r}
+pred3 <- predict(mymodel, tst1)
+confusionMatrix(pred3, tst1$Status)
+```
+
+```{r}
+currencePred <- predict(mymodel, newdata = tst1)
+currencePred
+```
+
+# K-MEANS CLUSTERING
+K-means clustering is a widely used unsupervised machine learning algorithm that is employed for data segmentation and pattern recognition. It's a partitioning algorithm that categorizes data points into K distinct and non-overlapping clusters, where K is a user-defined parameter. The algorithm's objective is to minimize the sum of squared distances (variance) within each cluster, making it a "centroid-based" clustering method.
+
+The K-means algorithm can be summarized in four key steps:
+
+*Initialization:* It begins with the selection of K initial cluster centroids. These centroids can be randomly chosen from the dataset or through other initialization methods like K-means++ to enhance the convergence of the algorithm. The centroids represent the initial cluster centers.
+
+*Assignment:* In this step, each data point is assigned to the cluster whose centroid is closest to it. The distance metric, often Euclidean distance, is used to determine the proximity of a point to each centroid. Consequently, each data point becomes a member of the nearest cluster.
+
+*Update Centroids:* After assigning data points to clusters, the algorithm recalculates the centroids of each cluster. These new centroids are computed by taking the mean (average) of all data points in each cluster. The centroids are updated iteratively until they converge or until a predefined convergence criterion is met.
+
+*Iteration:* Steps 2 and 3 are repeated iteratively until either the centroids do not change significantly between iterations or a maximum number of iterations is reached. The algorithm converges when the centroids stabilize, indicating that the clusters have been formed.
+
+K-means has several applications, including image compression, customer segmentation, anomaly detection, and more. However, it has some limitations. It assumes that clusters are spherical and equally sized, which may not always hold in real-world data. It is also sensitive to the initial placement of centroids and may converge to local minima. Addressing these limitations may involve using alternative clustering algorithms, such as hierarchical clustering or density-based clustering, depending on the nature of the data and the goals of the analysis. Proper evaluation and validation of clustering results are crucial to ensuring the effectiveness of K-means in a given context.
+
+
+# NAIVE BAYES
+Naive Bayes is a simple yet effective classification algorithm widely used in machine learning and natural language processing. It's based on Bayes' theorem and makes a "naive" assumption that all features are conditionally independent given the class label, which means that the presence or absence of one feature does not affect the presence or absence of another feature. This simplifying assumption allows for efficient and straightforward probabilistic classification.
+
+The core idea behind Naive Bayes is to compute the probability of a given instance belonging to a particular class based on the joint probabilities of the individual features and the class label. This is done using Bayes' theorem, which calculates the posterior probability of the class given the data. Mathematically, it can be represented as:
+
+$$
+P(class | features)= \left(\frac{P(features)*P(features | class)}{P(features)}\right) 
+$$
+
+where;
+$$
+p(class/features)
+$$
+
+is the posterior probability of the class given the features.
+
+$$
+p(class)
+$$
+
+is the prior probability of the class.
+
+$$
+p(features/class)
+$$
+
+is the likelihood of the features given the class.
+
+$$ 
+p(features)
+$$
+
+is the marginal probability of the features.
+
+In practice, p(features) can be challenging to compute, so Naive Bayes makes the simplifying assumption that all features are conditionally independent, which allows us to factorize  P(features∣class) as the product of individual probabilities:
+
+$$
+P(\text{{features | class}}) = P(\text{{feature}_1 | class}) \cdot P(\text{{feature}_2 | class}) \cdot \ldots \cdot P(\text{{feature}_n | class})
+$$
+
+This simplification significantly reduces the computational complexity and is the reason why it's called "naive." Naive Bayes is commonly used in text classification tasks like spam detection and sentiment analysis. It's particularly efficient with high-dimensional data, where other algorithms may suffer from the curse of dimensionality. Despite its simplicity and the independence assumption, Naive Bayes often performs surprisingly well, especially when the features are conditionally independent or when the data is well-suited to the independence assumption. However, it may not work well when there are strong dependencies between features, as it fails to capture these relationships.
+
+## Building your first naive Bayes model
+In this section, I’ll teach you how to build and evaluate the performance of a naive Bayes model to predict political party affiliation. Imagine that you’re a political scientist. You’re looking for common voting patterns in the mid-1980s that would predict whether a US congressperson was a Democrat or Republican. You have the voting record of each member of the House of Representatives in 1984, and you identify 16 key votes that you believe most strongly split the two political parties. Your job is to train a naive Bayes model to predict whether a congressperson was a Democrat or a Republican, based on how they voted throughout the year. Let’s start by loading the mlr and tidyverse packages:
+```{r}
+library(mlr)
+library(tidyverse)
+```
+
+### Loading and exploring the HouseVotes84 dataset
+Now let’s load the data, which is built into the mlbench package, convert it into a tibble (with as_tibble()), and explore it.
+
+NOTE Remember that a tibble is just a tidyverse version of a data frame that helps make our lives a little easier. We have a tibble containing 435 cases and 17 variables of members of the House Representatives in 1984. The Class variable is a factor indicating political party membership, and the other 16 variables are factors indicating how the individuals voted on each of the 16 votes. A value of y means they voted in favor, a value of n means they voted against, and a missing value (NA) means the individual either abstained or did
+not vote. Our goal is to train a model that can use the information in these variables to predict whether a congressperson was a Democrat or Republican, based on how they voted.
+```{r}
+data(HouseVotes84, package = "mlbench")
+votesTib <- as_tibble(HouseVotes84)
+votesTib
+```
+
+### Learn more about the HouseVotes84 data set
+```{r}
+??HouseVotes84
+```
+
+It looks like we have a few missing values (NAs) in our tibble. Let’s summarize the number of missing values in each variable using the map_dbl() function
+```{r}
+map_dbl(votesTib, ~sum(is.na(.)))
+```
+
+Every column in our tibble has missing values except the Class variable! Luckily, the naive Bayes algorithm can handle missing data in two ways:
+* By omitting the variables with missing values for a particular case, but still using that case to train the model
+* By omitting that case entirely from the training set
+
+By default, the naive Bayes implementation that mlr uses is to keep cases and drop variables. This usually works fine if the ratio of missing to complete values for the majority of cases is quite small. However, if you have a small number of variables and a large proportion of missing values, you may wish to omit the cases instead (and, more broadly, consider whether your dataset is sufficient for training).
+
+## Plotting the data
+Let’s plot our data to get a better understanding of the relationships between political party and votes. Once again, we’ll use our trick to gather the data into an untidy format so we can facet across the predictors. Because we’re plotting categorical variables against each other, we set the position argument of the geom_bar() function to "fill", which creates stacked bars for y, n, and NA responses that sum to 1.
+```{r fig.width=10, fig.height=7}
+votesUntidy <- gather(votesTib, "Variable", "Value", -Class)
+ggplot(votesUntidy, aes(Class, fill = Value)) +
+  facet_wrap(~ Variable, scales = "free_y") +
+  geom_bar(position = "fill")
+theme_bw()
+```
+The figure above, Filled bar charts showing the proportion of Democrats and Republicans that voted for (y) or against (n) or abstained (NA) on 16 different votes.
+
+### Training the model
+Now let’s create our task and learner, and build our model. We set the Class variable as the classification target of the makeClassifTask() function, and the algorithm we supply to the makeLearner() function is "classif.naiveBayes".
+```{r}
+votesTask <- makeClassifTask(data = votesTib, target = "Class")
+bayes <- makeLearner("classif.naiveBayes")
+bayesModel <- train(bayes, votesTask)
+```
+The model training completes with no errors because naive Bayes can handle missing data. Next, we’ll use 10-fold cross-validation repeated 50 times to evaluate the performance of our model-building procedure. Again, because this is a two-class classification problem, we have access to the false positive rate and false negative rate, and so we ask for these as well in the measures argument to the resample() function.
+
+```{r}
+kFold <- makeResampleDesc(method = "RepCV", folds = 10, reps = 50,
+                          stratify = TRUE)
+bayesCV <- resample(learner = bayes, task = votesTask,
+                    resampling = kFold,
+                    measures = list(mmce, acc, fpr, fnr))
+bayesCV$aggr
+```
+
+Our model correctly predicts 90% of test set cases in our cross-validation. That’s not bad! Now let’s use our model to predict the political party of a new politician, based on their votes.
+```{r}
+politician <- tibble(V1 = "n", V2 = "n", V3 = "y", V4 = "n", V5 = "n",
+                     V6 = "y", V7 = "y", V8 = "y", V9 = "y", V10 = "y",
+                     V11 = "n", V12 = "y", V13 = "n", V14 = "n",
+                     V15 = "y", V16 = "n")
+politician
+```
+
+```{r}
+politicianPred <- predict(bayesModel, newdata = politician)
+getPredictionResponse(politicianPred)
+```
+
+Our model predicts that the new politician is a Democrat.
+
+### Strengths and weaknesses of naive Bayes. 
+
+While it often isn’t easy to tell which algorithms will perform well for a given task, here are some strengths and weaknesses that will help you decide whether naive Bayes will perform well for your task.
+
+#### The strengths of naive Bayes are as follows:
+* It can handle both continuous and categorical predictor variables.
+* It’s computationally inexpensive to train.
+* It commonly performs well on topic classification problems where we want to classify documents based on the words they contain.
+* It has no hyperparameters to tune.
+* It is probabilistic and outputs the probabilities of new data belonging to each class.
+* It can handle cases with missing data.
+
+#### The weaknesses of naive Bayes are these:
+* It assumes that continuous predictor variables are normally distributed (typically), and performance will suffer if they’re not.
+* It assumes that predictor variables are independent of each other, which usually isn’t true. Performance will suffer if this assumption is severely violated.
+
+
+# EXTREME GRADIENT BOOSTING
+Extreme Gradient Boosting (XGBoost) is a powerful and widely-used ensemble machine learning algorithm known for its exceptional performance in various predictive modeling tasks, particularly in structured/tabular data problems. XGBoost belongs to the gradient boosting family of algorithms, which iteratively improves the predictive capability of a weak learner, typically decision trees, by combining them into a strong predictive model. What sets XGBoost apart is its efficiency, scalability, and regularized learning approach.
+
+XGBoost employs a gradient boosting framework, where each new decision tree is trained to correct the errors made by the ensemble of previous trees. It optimizes a loss function, typically a measure of prediction error, by fitting each tree to the negative gradient of the loss. This way, it focuses on the most challenging examples, continuously refining its predictions. XGBoost incorporates several techniques to improve model performance, such as regularization, which helps prevent overfitting, and a second-order approximation of the loss function for more accurate and faster convergence. Moreover, it allows users to specify custom evaluation metrics and handles missing data gracefully. XGBoost's parallel processing capabilities and the use of distributed computing frameworks make it highly scalable and suitable for large datasets. Its success has led to its integration into various machine learning libraries and platforms, making it accessible to a wide range of users.
+
+In practice, XGBoost has demonstrated its effectiveness across a multitude of applications, including Kaggle competitions and real-world problems in areas like finance, healthcare, and recommendation systems. Its versatility, speed, and ability to handle structured data make it a preferred choice for many data scientists and machine learning practitioners when seeking state-of-the-art performance in predictive modeling tasks. As a result, XGBoost has become an essential tool in the machine learning toolbox and continues to drive advances in the field.
+
+```{r}
+x.boost <- read.csv("Cardiotocographic.csv", header = TRUE)
+str(x.boost)
+attach(x.boost)
+head(x.boost,5)
+```
+
+### Creater Factors and Labels for the Dependent Variable
+```{r}
+x.boost$NSP <- factor(x.boost$NSP, levels = c(1,2,3),
+                      labels = c("Normal", "Suspect", "Pathologic"))
+head(x.boost,5)
+```
+
+### Partition the data into the train and testing
+```{r}
+set.seed(1234)
+inTrain <- createDataPartition(x.boost$NSP, p= 0.7, list = FALSE)
+Train_set <- x.boost[inTrain,]
+Test_set <- x.boost[-inTrain,]
+```
+
+### View the test and training data set
+```{r}
+head(Train_set,5)
+str(Train_set)
+```
+
+### Structure of the test data set
+```{r}
+str(Test_set)
+```
+
+Make sure that you load the Extreme gradient boosting (xgboost package) in caret
+
+```{r}
+library(caret)
+library(doParallel)
+registerDoParallel(cores = 4) # Register the paralled backend
+```
+
+### Method I (xgbLinear)
+### Fit the X.Gboost Model
+```{r}
+set.seed(1234)
+boost.model1 <- train(NSP~.,data = Train_set, 
+                               method = 'xgbLinear',
+                               trControl = trainControl(method = 'cv', number = 10,
+                                                        classProbs = TRUE, summaryFunction = defaultSummary), metric = 'Accuracy')
+```
+
+```{r}
+library(magrittr)
+library(dplyr)
+boost.model1
+boost.model1$results %>%
+  arrange(desc(Accuracy))%>%
+  head(1)
+```
+
+### Estimate the new model with tuned parameters
+
+```{r}
+boost.model1 <- train(NSP ~ .,
+                      data = Train_set, 
+                      method = 'xgbLinear',
+                      trControl = trainControl(method = 'cv', number = 10,
+                                               classProbs = TRUE, 
+                                               summaryFunction = defaultSummary),
+                      metric = 'Accuracy',
+                      tuneGrid = expand.grid(nrounds = 50, lambda = 0.1, alpha = 0, eta = 0.3))
+
+```
+
+The results of the eXtreme Gradient Boosting (XGBoost) algorithm applied to the dataset show promising performance across various tuning parameters. XGBoost is a powerful machine learning algorithm known for its efficiency and effectiveness in handling complex datasets with high-dimensional features and multiple classes. In this analysis, the dataset consists of 1490 samples with 21 predictor variables categorized into three classes: 'Normal', 'Suspect', and 'Pathologic'. The goal is to develop a classification model that accurately predicts the class label of each sample based on the predictor variables.
+
+The algorithm's performance is evaluated using cross-validated resampling with 10 folds, ensuring robustness and reliability in estimating the model's generalization ability. The resampling results are summarized across different tuning parameters, including lambda, alpha, and the number of boosting rounds (nrounds). Lambda and alpha are regularization parameters that control the complexity of the model and help prevent overfitting by penalizing large coefficients. The number of boosting rounds determines the number of weak learners (decision trees) used in the ensemble.
+
+The results show that the model achieves high accuracy and kappa values across various combinations of lambda, alpha, and nrounds. Accuracy, which measures the proportion of correctly classified samples, ranges from approximately 94.7% to 95.3%, indicating strong predictive performance. Similarly, kappa, a metric that measures the agreement between predicted and observed class labels while accounting for chance agreement, ranges from approximately 85.1% to 86.9%. These results suggest that the model performs significantly better than random chance and demonstrates robust classification capabilities.
+
+Upon closer examination of the tuning parameters, it is observed that the optimal combination for maximizing accuracy consists of a lambda value of 0.1, an alpha value of 0, and 50 boosting rounds. This combination yields the highest accuracy among all evaluated parameter settings, indicating that moderate regularization (lambda = 0.1) and no additional regularization (alpha = 0) result in the best performance. The choice of 50 boosting rounds strikes a balance between model complexity and computational efficiency, ensuring adequate representation of the dataset without excessive computational cost.
+
+Furthermore, the stability of the model's performance is assessed by examining the consistency of results across different parameter settings. The results indicate that variations in lambda, alpha, and nrounds have a modest impact on model performance, with accuracy and kappa values remaining relatively stable across different parameter combinations. This consistency suggests that the model is robust and reliable, capable of generalizing well to unseen data.
+
+Overall, the results demonstrate the effectiveness of eXtreme Gradient Boosting in accurately classifying samples into distinct categories based on the provided predictor variables. The high accuracy and kappa values achieved indicate strong predictive performance, while the stability of results across different tuning parameters enhances confidence in the model's reliability. By leveraging the power of XGBoost and carefully optimizing the tuning parameters, researchers can develop robust classification models capable of accurately predicting sample classifications in various domains, including healthcare, finance, and natural language processing.
+
+
+The second set of the results provides the tuning parameters and corresponding evaluation metrics for the eXtreme Gradient Boosting (XGBoost) algorithm applied to the dataset. Each row represents a specific combination of tuning parameters, including lambda, alpha, nrounds, and eta, along with the resulting accuracy and kappa values. Additionally, the standard deviations of accuracy (AccuracySD) and kappa (KappaSD) are provided to assess the stability of the model's performance.
+
+Lambda (λ): This parameter controls L2 regularization, also known as ridge regularization, which penalizes large coefficients in the model to prevent overfitting. In this case, the optimal lambda value is 0.1, indicating moderate regularization to balance model complexity and performance.
+
+Alpha (α): Alpha regulates L1 regularization, also known as Lasso regularization, which encourages sparsity by penalizing non-zero coefficients. A value of 0 indicates no additional regularization besides lambda. In this instance, alpha is set to 0, suggesting no additional penalty for non-zero coefficients.
+
+nrounds: The number of boosting rounds, or iterations, determines the number of weak learners (decision trees) used in the ensemble. A value of 50 indicates that the boosting process involves training 50 decision trees sequentially, each focusing on correcting the errors of its predecessors.
+
+Eta (η): Eta, also known as the learning rate, controls the step size at each iteration during gradient boosting. A value of 0.3 is fixed in this analysis, implying a moderate step size to balance model convergence speed and stability.
+
+Accuracy: Accuracy represents the proportion of correctly classified samples out of the total number of samples. The highest accuracy achieved with the specified tuning parameters is approximately 95.3%.
+
+Kappa: Kappa, also known as Cohen's Kappa coefficient, measures the agreement between predicted and observed class labels while accounting for chance agreement. The kappa value of around 86.9% indicates strong agreement between predicted and observed classifications, beyond what would be expected by random chance alone.
+
+AccuracySD and KappaSD: These values represent the standard deviations of accuracy and kappa, respectively, across the 10-fold cross-validated resampling. Lower standard deviations suggest less variability in model performance across different folds, indicating greater stability and consistency.
+
+In summary, the optimal combination of tuning parameters for the XGBoost model includes moderate L2 regularization (lambda = 0.1), no additional L1 regularization (alpha = 0), 50 boosting rounds, and a learning rate of 0.3. This configuration results in high accuracy and kappa values, indicating robust predictive performance with stable and consistent results across different folds of the cross-validation process.
+
+### Evaluation of Variables Importance
+```{r}
+var.imp <- varImp(boost.model1)
+var.imp
+```
+
+### Plot the variable importance
+```{r}
+plot(var.imp)
+```
+
+### Method II (xgbTree)
+```{r}
+set.seed(1234)
+boost.model2 <- train(NSP~.,data = Train_set, 
+                               method = 'xgbTree',
+                               trControl = trainControl(method = 'cv', number = 10,
+                                                        classProbs = TRUE, summaryFunction = defaultSummary), metric = 'Accuracy')
+```
+
+### View the Model Summary
+```{r}
+boost.model2
+boost.model2$results %>%
+  arrange(desc(Accuracy))%>%
+  head(1)
+```
+
+The results provided above are from a comprehensive analysis of eXtreme Gradient Boosting (XGBoost) models applied to a dataset containing 1490 samples with 21 predictor variables and three classes: 'Normal', 'Suspect', and 'Pathologic'. The analysis involved cross-validated resampling using a 10-fold approach, ensuring robustness and generalizability of the models. The tuning parameters explored include eta, max_depth, colsample_bytree, and subsample, with varying values for each parameter combination. The evaluation metrics used to assess model performance include accuracy and Kappa coefficients.
+
+The main objective of the analysis was to identify the optimal combination of tuning parameters that maximizes the accuracy of the XGBoost model in predicting the classes of the samples. Accuracy represents the proportion of correctly classified samples out of the total number of samples, while the Kappa coefficient measures the agreement between predicted and observed class labels, accounting for chance agreement.
+
+The results indicate that the choice of tuning parameters significantly impacts the performance of the XGBoost model. For instance, varying the max_depth parameter from 1 to 3 results in improvements in both accuracy and Kappa coefficient, suggesting that increasing the depth of the trees in the ensemble leads to better predictive performance. Similarly, increasing the number of boosting rounds (nrounds) from 50 to 150 generally improves accuracy and Kappa coefficient, indicating that additional iterations enhance the learning process of the model.
+
+Moreover, adjusting the colsample_bytree parameter, which controls the fraction of features to be randomly sampled for each tree, also influences model performance. Higher values of colsample_bytree result in better performance, suggesting that including a larger subset of features in each tree leads to more informative models.
+
+The subsample parameter, which controls the fraction of samples to be randomly sampled for each boosting round, also plays a crucial role in model performance. Generally, higher values of subsample lead to improved accuracy and Kappa coefficient, indicating that including a larger fraction of samples in each boosting round enhances the robustness of the model.
+
+Overall, the optimal combination of tuning parameters identified for the XGBoost model includes a learning rate (eta) of 0.4, a maximum depth of 3, a colsample_bytree of 0.8, and a subsample of 1. These parameters resulted in the highest accuracy and Kappa coefficient among all the combinations tested, indicating that they effectively balance model complexity and predictive performance.
+
+In conclusion, the results of the analysis demonstrate the importance of carefully selecting tuning parameters in XGBoost models to achieve optimal predictive performance. By systematically exploring different parameter combinations, researchers can identify the most effective settings for their specific dataset, ultimately leading to more accurate and reliable predictions.
+
+
+The second set of results provides set of tuning parameters and their corresponding performance metrics offer valuable insights into the optimization process of eXtreme Gradient Boosting (XGBoost) models for the classification task at hand. Let's delve into each parameter's role and its impact on the model's accuracy and Kappa coefficient.
+
+eta (Learning Rate):
+The learning rate, represented by the parameter eta, controls the step size at which the model adapts during the optimization process. A higher eta value implies faster convergence but may risk overshooting the optimal solution. In this case, an eta value of 0.4 was chosen, indicating a moderate learning rate that balances convergence speed with precision.
+
+max_depth (Maximum Tree Depth):
+The max_depth parameter determines the maximum depth of each decision tree in the ensemble. A deeper tree can capture more intricate patterns in the data but also increases the risk of overfitting. With a max_depth of 3, the model strikes a balance between complexity and generalization, leading to robust predictions.
+
+gamma (Minimum Loss Reduction to Create New Tree Split):
+Gamma controls the minimum loss reduction required to create a new split in the decision tree during the tree-building process. A higher gamma value imposes stricter constraints on tree growth, effectively regularizing the model and mitigating overfitting. Here, a gamma value of 0 indicates no minimum loss reduction requirement for splitting nodes.
+
+colsample_bytree (Column Subsampling Rate):
+Colsample_bytree specifies the fraction of features to be randomly sampled for each tree. By introducing randomness into feature selection, colsample_bytree reduces the correlation between individual trees in the ensemble, thereby enhancing model diversity and robustness. A value of 0.8 suggests that 80% of the features are considered for each tree, striking a balance between model diversity and information retention.
+
+min_child_weight (Minimum Sum of Instance Weight Needed in a Child):
+Min_child_weight sets the minimum sum of instance weights required to partition a node further. This parameter helps control the tree's growth and prevents it from being overly sensitive to individual instances with very small weights. With a min_child_weight of 1, there are no restrictions on the partitioning of nodes based on the sum of instance weights.
+
+subsample (Row Subsampling Rate):xz
+Subsample determines the fraction of samples to be randomly selected for each boosting round. Similar to colsample_bytree, subsample introduces randomness into the training process, reducing overfitting and improving generalization. A subsample value of 1 indicates that all samples are used for each boosting round, ensuring that the model learns from the entire dataset.
+
+nrounds (Number of Boosting Rounds):
+Nrounds specifies the number of boosting rounds (iterations) to be performed during the training process. Increasing the number of rounds allows the model to learn more complex patterns from the data, potentially improving performance. In this analysis, 150 boosting rounds were conducted to ensure sufficient model convergence and learning.
+
+Finally, the performance metrics, accuracy, and Kappa coefficient, provide quantitative measures of the model's predictive ability. With an accuracy of 95.30% and a Kappa coefficient of 0.8692, the chosen set of tuning parameters yields a highly accurate and reliable model for classifying samples into the 'Normal', 'Suspect', and 'Pathologic' classes.
+
+In summary, the selection of appropriate tuning parameters is crucial for optimizing the performance of XGBoost models. By carefully adjusting these parameters, researchers can develop robust and accurate predictive models tailored to specific datasets and classification tasks.
+
+
+
+### Check Variable Importance
+```{r}
+var.imp2 <- varImp(boost.model2)
+var.imp2
+plot(var.imp2)
+```
+
+### Predictions using Testing data [xgbLinear]
+```{r}
+confusionMatrix(predict(boost.model1, Train_set), 
+                Train_set$NSP, positive = "Normal")
+```
+
+The confusion matrix and accompanying statistics provide a comprehensive overview of the classification performance of the model across the three target classes: 'Normal,' 'Suspect,' and 'Pathologic.' The confusion matrix displays the number of correct and incorrect predictions made by the model for each class. In this case, the model achieved perfect classification accuracy, with all instances correctly classified into their respective classes. This is evident from the diagonal elements of the confusion matrix, where all the true positives are concentrated, while the off-diagonal elements remain zero, indicating no misclassifications.
+
+The overall statistics confirm the exceptional performance of the model, with an accuracy of 1.0, implying that all predictions made by the model align perfectly with the true class labels. The 95% confidence interval for accuracy is extremely narrow, ranging from 0.9975 to 1.0, further emphasizing the high precision of the model's predictions. Moreover, the model's accuracy significantly surpasses the no-information rate (NIR), as indicated by the p-value, which is less than 2.2e-16, indicating a statistically significant difference between the model's performance and random chance.
+
+Examining the statistics by class provides deeper insights into the model's performance for each individual class. Sensitivity, specificity, positive predictive value (PPV), and negative predictive value (NPV) are all perfect (1.0) for each class, indicating that the model correctly identifies all instances of each class while avoiding false positives and false negatives. The prevalence and detection rate metrics reflect the distribution of each class in the dataset and the model's ability to detect instances of each class, while the balanced accuracy accounts for class imbalances by considering the average of sensitivity and specificity across all classes. Overall, the model demonstrates exceptional performance across all metrics, achieving perfect classification accuracy and effectively distinguishing between the 'Normal,' 'Suspect,' and 'Pathologic' classes without any misclassifications.
+
+### Predictions using Testing data [xgbTree]
+```{r}
+confusionMatrix(predict(boost.model2, Train_set), 
+                Train_set$NSP, positive = "Normal")
+```
+
+### Prediction using Test Data for "xgbLinear"
+```{r}
+p <- predict(boost.model2, Test_set)
+head(p,100)
+```
+
+### The Accuracy of the Model using the Testing Data
+```{r}
+confusionMatrix(p,
+                Test_set$NSP, positive = "Normal")
+```
+
+#### Predicted Probabilities
+```{r}
+options(scipen=999)
+pred_prob <- predict(boost.model1, Test_set, type="prob")
+pred_prob
+```
+
+### Calculate the ROC
+```{r}
+library(pROC)
+ROC <- roc(response =Test_set$NSP,
+           predictor = predict(boost.model1, newdata = Test_set, type = 'prob')$Normal)
+ROC
+```
+
+The receiver operating characteristic (ROC) analysis is a fundamental tool for evaluating the performance of binary classification models by assessing their ability to discriminate between the positive and negative classes. In this analysis, the area under the ROC curve (AUC) is a key metric used to quantify the model's discriminative power. An AUC value close to 1 indicates excellent discrimination, while an AUC of 0.5 suggests random chance.
+
+In this specific analysis, the AUC value is 0.9881, indicating that the model achieves exceptional discrimination between the 'Normal' and 'Suspect' classes. This high AUC value suggests that the model correctly ranks a randomly chosen 'Normal' instance higher than a randomly chosen 'Suspect' instance in approximately 98.81% of cases. Therefore, the model demonstrates strong discriminative ability in distinguishing between these two classes, with minimal overlap in the predicted probabilities assigned to each class.
+
+The ROC curve itself provides a visual representation of the model's performance across different probability thresholds for class assignment. It plots the true positive rate (sensitivity) against the false positive rate (1-specificity) for various threshold values. Ideally, the ROC curve should hug the top-left corner of the plot, indicating high sensitivity and low false positive rates across all threshold values. The AUC value represents the area under this curve, summarizing the overall discriminative performance of the model.
+
+Moreover, the AUC value can be interpreted as the probability that the model ranks a randomly chosen positive instance (in this case, a 'Normal' instance) higher than a randomly chosen negative instance (a 'Suspect' instance). With an AUC of 0.9881, there is a high likelihood that the model assigns higher predicted probabilities to 'Normal' instances compared to 'Suspect' instances, further validating its discriminative capability.
+
+Overall, an AUC of 0.9881 indicates excellent performance of the model in discriminating between the 'Normal' and 'Suspect' classes, with strong predictive power and minimal misclassifications. This high AUC value instills confidence in the model's ability to accurately classify instances and underscores its potential utility in real-world applications requiring precise classification of fetal heart rate patterns.
+
+### Plot the ROC Curve
+```{r}
+plot(ROC, legacy.axes = TRUE, main = "The ROC Curve and the Area Under the Curve")
+text(0.5, 0.5, paste("AUC =", round(auc(ROC), 4)), adj = c(0,1), cex = 1, font = 2)
+
+```
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

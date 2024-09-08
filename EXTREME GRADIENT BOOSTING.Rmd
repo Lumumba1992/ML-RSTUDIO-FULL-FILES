@@ -1,0 +1,324 @@
+---
+title: "COMPARING THE PERFORMANCE OF VARIOUS CLASSIFICATION MODELS: APPLICATION OF MACHINE LEARNING ALGORITHMS"
+author: "Lumumba Wandera Victor"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+\newpage
+\tableofcontents
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE,comment = NA, message=FALSE,
+                      fig.height=4, fig.width=6)
+```
+
+# EXTREME GRADIENT BOOSTING
+Extreme Gradient Boosting (XGBoost) is a powerful and widely-used ensemble machine learning algorithm known for its exceptional performance in various predictive modeling tasks, particularly in structured/tabular data problems. XGBoost belongs to the gradient boosting family of algorithms, which iteratively improves the predictive capability of a weak learner, typically decision trees, by combining them into a strong predictive model. What sets XGBoost apart is its efficiency, scalability, and regularized learning approach.
+
+XGBoost employs a gradient boosting framework, where each new decision tree is trained to correct the errors made by the ensemble of previous trees. It optimizes a loss function, typically a measure of prediction error, by fitting each tree to the negative gradient of the loss. This way, it focuses on the most challenging examples, continuously refining its predictions. XGBoost incorporates several techniques to improve model performance, such as regularization, which helps prevent overfitting, and a second-order approximation of the loss function for more accurate and faster convergence. Moreover, it allows users to specify custom evaluation metrics and handles missing data gracefully. XGBoost's parallel processing capabilities and the use of distributed computing frameworks make it highly scalable and suitable for large datasets. Its success has led to its integration into various machine learning libraries and platforms, making it accessible to a wide range of users.
+
+In practice, XGBoost has demonstrated its effectiveness across a multitude of applications, including Kaggle competitions and real-world problems in areas like finance, healthcare, and recommendation systems. Its versatility, speed, and ability to handle structured data make it a preferred choice for many data scientists and machine learning practitioners when seeking state-of-the-art performance in predictive modeling tasks. As a result, XGBoost has become an essential tool in the machine learning toolbox and continues to drive advances in the field.
+
+### Load the following libraries
+```{r}
+library(sjmisc)
+library(igraph)
+library(e1071)
+library(hardhat)
+library(ipred)
+library(caret)
+library(sjPlot)
+library(nnet)
+library(wakefield)
+library(kknn)
+library(dplyr)
+library(nnet)
+library(caTools)
+library(ROCR)
+library(stargazer)
+library(dplyr)
+library(nnet)
+library(caTools)
+library(ROCR)
+library(stargazer)
+library(ISLR)
+library(ISLR2)
+library(MASS)
+library(splines)
+library(splines2)
+library(pROC)
+library(ISLR)
+library(ISLR2)
+library(MASS)
+library(splines)
+library(splines2)
+library(pROC)
+library(randomForest)
+library(rpart)
+library(rpart.plot)
+library(rattle)
+library(ISLR2)
+library(MASS)
+library(splines)
+library(pROC)
+library(rattle)
+library(rpart)
+library(party)
+library(partykit)
+library(ggplot2)
+library(tune)
+library(TunePareto)
+```
+
+```{r}
+x.boost <- read.csv("Cardiotocographic.csv", header = TRUE)
+str(x.boost)
+attach(x.boost)
+head(x.boost,5)
+```
+
+### Creater Factors and Labels for the Dependent Variable
+```{r}
+x.boost$NSP <- factor(x.boost$NSP, levels = c(1,2,3),
+                      labels = c("Normal", "Suspect", "Pathologic"))
+head(x.boost,5)
+```
+
+### Partition the data into the train and testing
+```{r}
+set.seed(1234)
+inTrain <- createDataPartition(x.boost$NSP, p= 0.7, list = FALSE)
+Train_set <- x.boost[inTrain,]
+Test_set <- x.boost[-inTrain,]
+```
+
+### View the test and training data set
+```{r}
+head(Train_set,5)
+str(Train_set)
+```
+
+### Structure of the test data set
+```{r}
+str(Test_set)
+```
+
+Make sure that you load the Extreme gradient boosting (xgboost package) in caret
+
+```{r}
+library(caret)
+library(doParallel)
+registerDoParallel(cores = 4) # Register the paralled backend
+```
+
+### Method I (xgbLinear)
+### Fit the X.Gboost Model
+```{r}
+set.seed(1234)
+boost.model1 <- train(NSP~.,data = Train_set, 
+                               method = 'xgbLinear',
+                               trControl = trainControl(method = 'cv', number = 10,
+                                                        classProbs = TRUE, summaryFunction = defaultSummary), metric = 'Accuracy')
+```
+
+```{r}
+library(magrittr)
+library(dplyr)
+boost.model1
+boost.model1$results %>%
+  arrange(desc(Accuracy))%>%
+  head(1)
+```
+
+### Estimate the new model with tuned parameters
+```{r}
+boost.model1 <- train(NSP ~ .,
+                      data = Train_set, 
+                      method = 'xgbLinear',
+                      trControl = trainControl(method = 'cv', number = 10,
+                                               classProbs = TRUE, 
+                                               summaryFunction = defaultSummary),
+                      metric = 'Accuracy',
+                      tuneGrid = expand.grid(nrounds = 50, lambda = 0.1, alpha = 0, eta = 0.3))
+
+```
+
+
+The results of the eXtreme Gradient Boosting (XGBoost) algorithm applied to the dataset show promising performance across various tuning parameters. XGBoost is a powerful machine learning algorithm known for its efficiency and effectiveness in handling complex datasets with high-dimensional features and multiple classes. In this analysis, the dataset consists of 1490 samples with 21 predictor variables categorized into three classes: 'Normal', 'Suspect', and 'Pathologic'. The goal is to develop a classification model that accurately predicts the class label of each sample based on the predictor variables.
+
+The algorithm's performance is evaluated using cross-validated resampling with 10 folds, ensuring robustness and reliability in estimating the model's generalization ability. The resampling results are summarized across different tuning parameters, including lambda, alpha, and the number of boosting rounds (nrounds). Lambda and alpha are regularization parameters that control the complexity of the model and help prevent overfitting by penalizing large coefficients. The number of boosting rounds determines the number of weak learners (decision trees) used in the ensemble.
+
+The results show that the model achieves high accuracy and kappa values across various combinations of lambda, alpha, and nrounds. Accuracy, which measures the proportion of correctly classified samples, ranges from approximately 94.7% to 95.3%, indicating strong predictive performance. Similarly, kappa, a metric that measures the agreement between predicted and observed class labels while accounting for chance agreement, ranges from approximately 85.1% to 86.9%. These results suggest that the model performs significantly better than random chance and demonstrates robust classification capabilities.
+
+Upon closer examination of the tuning parameters, it is observed that the optimal combination for maximizing accuracy consists of a lambda value of 0.1, an alpha value of 0, and 50 boosting rounds. This combination yields the highest accuracy among all evaluated parameter settings, indicating that moderate regularization (lambda = 0.1) and no additional regularization (alpha = 0) result in the best performance. The choice of 50 boosting rounds strikes a balance between model complexity and computational efficiency, ensuring adequate representation of the dataset without excessive computational cost.
+
+Furthermore, the stability of the model's performance is assessed by examining the consistency of results across different parameter settings. The results indicate that variations in lambda, alpha, and nrounds have a modest impact on model performance, with accuracy and kappa values remaining relatively stable across different parameter combinations. This consistency suggests that the model is robust and reliable, capable of generalizing well to unseen data.
+
+Overall, the results demonstrate the effectiveness of eXtreme Gradient Boosting in accurately classifying samples into distinct categories based on the provided predictor variables. The high accuracy and kappa values achieved indicate strong predictive performance, while the stability of results across different tuning parameters enhances confidence in the model's reliability. By leveraging the power of XGBoost and carefully optimizing the tuning parameters, researchers can develop robust classification models capable of accurately predicting sample classifications in various domains, including healthcare, finance, and natural language processing.
+
+
+The second set of the results provides the tuning parameters and corresponding evaluation metrics for the eXtreme Gradient Boosting (XGBoost) algorithm applied to the dataset. Each row represents a specific combination of tuning parameters, including lambda, alpha, nrounds, and eta, along with the resulting accuracy and kappa values. Additionally, the standard deviations of accuracy (AccuracySD) and kappa (KappaSD) are provided to assess the stability of the model's performance.
+
+Lambda (λ): This parameter controls L2 regularization, also known as ridge regularization, which penalizes large coefficients in the model to prevent overfitting. In this case, the optimal lambda value is 0.1, indicating moderate regularization to balance model complexity and performance.
+
+Alpha (α): Alpha regulates L1 regularization, also known as Lasso regularization, which encourages sparsity by penalizing non-zero coefficients. A value of 0 indicates no additional regularization besides lambda. In this instance, alpha is set to 0, suggesting no additional penalty for non-zero coefficients.
+
+nrounds: The number of boosting rounds, or iterations, determines the number of weak learners (decision trees) used in the ensemble. A value of 50 indicates that the boosting process involves training 50 decision trees sequentially, each focusing on correcting the errors of its predecessors.
+
+Eta (η): Eta, also known as the learning rate, controls the step size at each iteration during gradient boosting. A value of 0.3 is fixed in this analysis, implying a moderate step size to balance model convergence speed and stability.
+
+Accuracy: Accuracy represents the proportion of correctly classified samples out of the total number of samples. The highest accuracy achieved with the specified tuning parameters is approximately 95.3%.
+
+Kappa: Kappa, also known as Cohen's Kappa coefficient, measures the agreement between predicted and observed class labels while accounting for chance agreement. The kappa value of around 86.9% indicates strong agreement between predicted and observed classifications, beyond what would be expected by random chance alone.
+
+AccuracySD and KappaSD: These values represent the standard deviations of accuracy and kappa, respectively, across the 10-fold cross-validated resampling. Lower standard deviations suggest less variability in model performance across different folds, indicating greater stability and consistency.
+
+In summary, the optimal combination of tuning parameters for the XGBoost model includes moderate L2 regularization (lambda = 0.1), no additional L1 regularization (alpha = 0), 50 boosting rounds, and a learning rate of 0.3. This configuration results in high accuracy and kappa values, indicating robust predictive performance with stable and consistent results across different folds of the cross-validation process.
+
+### Evaluation of Variables Importance
+```{r}
+var.imp <- varImp(boost.model1)
+var.imp
+```
+
+### Plot the variable importance
+```{r}
+plot(var.imp)
+```
+
+### Method II (xgbTree)
+```{r}
+set.seed(1234)
+boost.model2 <- train(NSP~.,data = Train_set, 
+                               method = 'xgbTree',
+                               trControl = trainControl(method = 'cv', number = 10,
+                                                        classProbs = TRUE, summaryFunction = defaultSummary), metric = 'Accuracy')
+```
+
+### View the Model Summary
+```{r}
+boost.model2
+boost.model2$results %>%
+  arrange(desc(Accuracy))%>%
+  head(1)
+```
+
+The results provided above are from a comprehensive analysis of eXtreme Gradient Boosting (XGBoost) models applied to a dataset containing 1490 samples with 21 predictor variables and three classes: 'Normal', 'Suspect', and 'Pathologic'. The analysis involved cross-validated resampling using a 10-fold approach, ensuring robustness and generalizability of the models. The tuning parameters explored include eta, max_depth, colsample_bytree, and subsample, with varying values for each parameter combination. The evaluation metrics used to assess model performance include accuracy and Kappa coefficients.
+
+The main objective of the analysis was to identify the optimal combination of tuning parameters that maximizes the accuracy of the XGBoost model in predicting the classes of the samples. Accuracy represents the proportion of correctly classified samples out of the total number of samples, while the Kappa coefficient measures the agreement between predicted and observed class labels, accounting for chance agreement.
+
+The results indicate that the choice of tuning parameters significantly impacts the performance of the XGBoost model. For instance, varying the max_depth parameter from 1 to 3 results in improvements in both accuracy and Kappa coefficient, suggesting that increasing the depth of the trees in the ensemble leads to better predictive performance. Similarly, increasing the number of boosting rounds (nrounds) from 50 to 150 generally improves accuracy and Kappa coefficient, indicating that additional iterations enhance the learning process of the model.
+
+Moreover, adjusting the colsample_bytree parameter, which controls the fraction of features to be randomly sampled for each tree, also influences model performance. Higher values of colsample_bytree result in better performance, suggesting that including a larger subset of features in each tree leads to more informative models.
+
+The subsample parameter, which controls the fraction of samples to be randomly sampled for each boosting round, also plays a crucial role in model performance. Generally, higher values of subsample lead to improved accuracy and Kappa coefficient, indicating that including a larger fraction of samples in each boosting round enhances the robustness of the model.
+
+Overall, the optimal combination of tuning parameters identified for the XGBoost model includes a learning rate (eta) of 0.4, a maximum depth of 3, a colsample_bytree of 0.8, and a subsample of 1. These parameters resulted in the highest accuracy and Kappa coefficient among all the combinations tested, indicating that they effectively balance model complexity and predictive performance.
+
+In conclusion, the results of the analysis demonstrate the importance of carefully selecting tuning parameters in XGBoost models to achieve optimal predictive performance. By systematically exploring different parameter combinations, researchers can identify the most effective settings for their specific dataset, ultimately leading to more accurate and reliable predictions.
+
+
+The second set of results provides set of tuning parameters and their corresponding performance metrics offer valuable insights into the optimization process of eXtreme Gradient Boosting (XGBoost) models for the classification task at hand. Let's delve into each parameter's role and its impact on the model's accuracy and Kappa coefficient.
+
+eta (Learning Rate):
+The learning rate, represented by the parameter eta, controls the step size at which the model adapts during the optimization process. A higher eta value implies faster convergence but may risk overshooting the optimal solution. In this case, an eta value of 0.4 was chosen, indicating a moderate learning rate that balances convergence speed with precision.
+
+max_depth (Maximum Tree Depth):
+The max_depth parameter determines the maximum depth of each decision tree in the ensemble. A deeper tree can capture more intricate patterns in the data but also increases the risk of overfitting. With a max_depth of 3, the model strikes a balance between complexity and generalization, leading to robust predictions.
+
+gamma (Minimum Loss Reduction to Create New Tree Split):
+Gamma controls the minimum loss reduction required to create a new split in the decision tree during the tree-building process. A higher gamma value imposes stricter constraints on tree growth, effectively regularizing the model and mitigating overfitting. Here, a gamma value of 0 indicates no minimum loss reduction requirement for splitting nodes.
+
+colsample_bytree (Column Subsampling Rate):
+Colsample_bytree specifies the fraction of features to be randomly sampled for each tree. By introducing randomness into feature selection, colsample_bytree reduces the correlation between individual trees in the ensemble, thereby enhancing model diversity and robustness. A value of 0.8 suggests that 80% of the features are considered for each tree, striking a balance between model diversity and information retention.
+
+min_child_weight (Minimum Sum of Instance Weight Needed in a Child):
+Min_child_weight sets the minimum sum of instance weights required to partition a node further. This parameter helps control the tree's growth and prevents it from being overly sensitive to individual instances with very small weights. With a min_child_weight of 1, there are no restrictions on the partitioning of nodes based on the sum of instance weights.
+
+subsample (Row Subsampling Rate):xz
+Subsample determines the fraction of samples to be randomly selected for each boosting round. Similar to colsample_bytree, subsample introduces randomness into the training process, reducing overfitting and improving generalization. A subsample value of 1 indicates that all samples are used for each boosting round, ensuring that the model learns from the entire dataset.
+
+nrounds (Number of Boosting Rounds):
+Nrounds specifies the number of boosting rounds (iterations) to be performed during the training process. Increasing the number of rounds allows the model to learn more complex patterns from the data, potentially improving performance. In this analysis, 150 boosting rounds were conducted to ensure sufficient model convergence and learning.
+
+Finally, the performance metrics, accuracy, and Kappa coefficient, provide quantitative measures of the model's predictive ability. With an accuracy of 95.30% and a Kappa coefficient of 0.8692, the chosen set of tuning parameters yields a highly accurate and reliable model for classifying samples into the 'Normal', 'Suspect', and 'Pathologic' classes.
+
+In summary, the selection of appropriate tuning parameters is crucial for optimizing the performance of XGBoost models. By carefully adjusting these parameters, researchers can develop robust and accurate predictive models tailored to specific datasets and classification tasks.
+
+
+
+### Check Variable Importance
+```{r}
+var.imp2 <- varImp(boost.model2)
+var.imp2
+plot(var.imp2)
+```
+
+### Predictions using Testing data [xgbLinear]
+```{r}
+confusionMatrix(predict(boost.model1, Train_set), 
+                Train_set$NSP, positive = "Normal")
+```
+
+The confusion matrix and accompanying statistics provide a comprehensive overview of the classification performance of the model across the three target classes: 'Normal,' 'Suspect,' and 'Pathologic.' The confusion matrix displays the number of correct and incorrect predictions made by the model for each class. In this case, the model achieved perfect classification accuracy, with all instances correctly classified into their respective classes. This is evident from the diagonal elements of the confusion matrix, where all the true positives are concentrated, while the off-diagonal elements remain zero, indicating no misclassifications.
+
+The overall statistics confirm the exceptional performance of the model, with an accuracy of 1.0, implying that all predictions made by the model align perfectly with the true class labels. The 95% confidence interval for accuracy is extremely narrow, ranging from 0.9975 to 1.0, further emphasizing the high precision of the model's predictions. Moreover, the model's accuracy significantly surpasses the no-information rate (NIR), as indicated by the p-value, which is less than 2.2e-16, indicating a statistically significant difference between the model's performance and random chance.
+
+Examining the statistics by class provides deeper insights into the model's performance for each individual class. Sensitivity, specificity, positive predictive value (PPV), and negative predictive value (NPV) are all perfect (1.0) for each class, indicating that the model correctly identifies all instances of each class while avoiding false positives and false negatives. The prevalence and detection rate metrics reflect the distribution of each class in the dataset and the model's ability to detect instances of each class, while the balanced accuracy accounts for class imbalances by considering the average of sensitivity and specificity across all classes. Overall, the model demonstrates exceptional performance across all metrics, achieving perfect classification accuracy and effectively distinguishing between the 'Normal,' 'Suspect,' and 'Pathologic' classes without any misclassifications.
+
+### Predictions using Testing data [xgbTree]
+```{r}
+confusionMatrix(predict(boost.model2, Train_set), 
+                Train_set$NSP, positive = "Normal")
+```
+
+### Prediction using Test Data for "xgbLinear"
+```{r}
+p <- predict(boost.model2, Test_set)
+head(p,100)
+```
+
+### The Accuracy of the Model using the Testing Data
+```{r}
+confusionMatrix(p,
+                Test_set$NSP, positive = "Normal")
+```
+
+#### Predicted Probabilities
+```{r}
+options(scipen=999)
+pred_prob <- predict(boost.model1, Test_set, type="prob")
+pred_prob
+```
+
+### Calculate the ROC
+```{r}
+library(pROC)
+ROC <- roc(response =Test_set$NSP,
+           predictor = predict(boost.model1, newdata = Test_set, type = 'prob')$Normal)
+ROC
+```
+
+The receiver operating characteristic (ROC) analysis is a fundamental tool for evaluating the performance of binary classification models by assessing their ability to discriminate between the positive and negative classes. In this analysis, the area under the ROC curve (AUC) is a key metric used to quantify the model's discriminative power. An AUC value close to 1 indicates excellent discrimination, while an AUC of 0.5 suggests random chance.
+
+In this specific analysis, the AUC value is 0.9881, indicating that the model achieves exceptional discrimination between the 'Normal' and 'Suspect' classes. This high AUC value suggests that the model correctly ranks a randomly chosen 'Normal' instance higher than a randomly chosen 'Suspect' instance in approximately 98.81% of cases. Therefore, the model demonstrates strong discriminative ability in distinguishing between these two classes, with minimal overlap in the predicted probabilities assigned to each class.
+
+The ROC curve itself provides a visual representation of the model's performance across different probability thresholds for class assignment. It plots the true positive rate (sensitivity) against the false positive rate (1-specificity) for various threshold values. Ideally, the ROC curve should hug the top-left corner of the plot, indicating high sensitivity and low false positive rates across all threshold values. The AUC value represents the area under this curve, summarizing the overall discriminative performance of the model.
+
+Moreover, the AUC value can be interpreted as the probability that the model ranks a randomly chosen positive instance (in this case, a 'Normal' instance) higher than a randomly chosen negative instance (a 'Suspect' instance). With an AUC of 0.9881, there is a high likelihood that the model assigns higher predicted probabilities to 'Normal' instances compared to 'Suspect' instances, further validating its discriminative capability.
+
+Overall, an AUC of 0.9881 indicates excellent performance of the model in discriminating between the 'Normal' and 'Suspect' classes, with strong predictive power and minimal misclassifications. This high AUC value instills confidence in the model's ability to accurately classify instances and underscores its potential utility in real-world applications requiring precise classification of fetal heart rate patterns.
+
+### Plot the ROC Curve
+```{r}
+plot(ROC, legacy.axes = TRUE, main = "The ROC Curve and the Area Under the Curve")
+text(0.5, 0.5, paste("AUC =", round(auc(ROC), 4)), adj = c(0,1), cex = 1, font = 2)
+```
+
+
+
+
+
+

@@ -1,0 +1,41 @@
+PatientID,Gender,Age,CD4Count,ViralLoad,Treatment,Outcome
+1,Male,35,450,15000,ARV,Progression
+2,Female,42,600,8000,ARV,No Progression
+3,Male,28,350,25000,No ARV,Progression
+4,Male,52,700,500,ARV,No Progression
+5,Female,45,800,2000,ARV,No Progression
+6,Male,39,550,10000,No ARV,Progression
+7,Female,31,400,3500,ARV,Progression
+8,Male,48,650,100,ARV,No Progression
+9,Male,41,600,1500,ARV,No Progression
+10,Female,36,550,20000,No ARV,Progression
+11,Female,37,700,5000,ARV,Progression
+12,Male,44,480,18000,ARV,Progression
+13,Female,29,300,22000,No ARV,Progression
+14,Male,51,620,700,ARV,No Progression
+15,Male,43,580,4000,ARV,No Progression
+16,Female,33,400,3000,ARV,No Progression
+17,Male,55,650,150,ARV,No Progression
+18,Male,39,550,1200,ARV,No Progression
+19,Female,47,750,1000,ARV,No Progression
+20,Female,38,600,18000,No ARV,Progression
+21,Female,42,620,5500,ARV,Progression
+22,Male,36,400,28000,No ARV,Progression
+23,Female,50,550,800,ARV,No Progression
+24,Male,31,320,19000,No ARV,Progression
+25,Male,53,720,10000,ARV,No Progression
+26,Female,27,380,30000,No ARV,Progression
+27,Male,49,630,400,ARV,No Progression
+28,Male,40,570,1500,ARV,No Progression
+29,Female,32,420,6000,No ARV,Progression
+30,Female,46,730,120,ARV,No Progression
+31,Male,34,500,2000,ARV,No Progression
+32,Male,56,680,250,ARV,No Progression
+33,Female,30,350,28000,No ARV,Progression
+34,Male,45,600,900,ARV,No Progression
+35,Male,37,550,1300,ARV,No Progression
+36,Female,43,650,7000,No ARV,Progression
+37,Female,35,400,24000,No ARV,Progression
+38,Male,51,620,350,ARV,No Progression
+39,Male,39,580,1200,ARV,No Progression
+40,Female,48,730,200,ARV,No Progression

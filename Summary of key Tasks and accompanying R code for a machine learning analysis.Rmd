@@ -1,0 +1,294 @@
+---
+title: "Summary of key Tasks and accompanying R code for a machine learning analysis"
+author: "Lumumba Wandera Victor"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = NA, message = FALSE, warning = FALSE,
+                      fig.height = 5, fig.width = 7)
+```
+
+### 1.1) Import new dataset called „db “
+```{r}
+db <-read.csv(url("https://archive.ics.uci.edu/ml/machine-learning-databases/mammographic-masses/mammographic_masses.data"))
+head(db,5)
+```
+
+### Write the CSV and save in the Work Directory
+```{r}
+write.csv(db, "machine-learning.csv")
+```
+
+### Check the structure of the data
+```{r}
+str(db)
+```
+
+### 1.2) Label columns in „db” 
+```{r}
+colnames(db) <-c("BIRADS", "Age", "Shape", "Margin", "Density", "outcome")
+head(db,5)
+```
+
+### 1.3) Assign factor-levels for factors (categorial variables) and set reference category
+```{r}
+db$Margin <-as.factor (ifelse (db$Margin == "1", "Circumscribed",
+ifelse (db$Margin == "2","microbulated",
+ifelse (db$Margin == "3", "Obscured",
+ifelse (db$Margin == "4", "Ill-defined", "Spiculated")))))
+db$Margin <-relevel (db$Margin, ref = "Circumscribed")
+```
+
+### View the new data
+```{r}
+head(db,5)
+```
+
+### 1.4) Assign numeric status for numerical variables
+```{r}
+db$Age <-as.numeric(db$Age)
+head(db,5)
+```
+
+### View age frequency
+```{r}
+library(sjmisc)
+frq(db, Age)
+```
+
+### 1.5) Replace unlogical age values as missing values
+```{r}
+AGE_upper <-120
+AGE_lower <-0
+db$Age <-ifelse (db$Age >= AGE_upper, NA, db$Age)
+db$Age <-ifelse (db$Age <= AGE_lower, NA, db$Age)
+```
+
+### 1.6) Remove variables that have over 50% missing values
+```{r}
+missing_col <-colMeans(is.na (db))
+remove <-vector()
+for(i in 1:length(missing_col)){
+  if(missing_col[i] >= 0.5){remove < -append(remove, names(missing_col[i]))}}
+if(!is.logical(remove)) db <-db %>% dplyr::select(-!!remove)
+```
+
+### 1.7) Split dataset into development and validation sets
+```{r}
+library(caret)
+train_index <-createDataPartition(db$outcome, p = .8, list = FALSE,times = 1)
+db_train <-db[train_index,]
+db_test <-db[-train_index,]
+```
+
+### 1.8) Define recipe for data pre-processing
+```{r}
+library(recipes)
+library(dplyr)
+recipe <-recipe(outcome ~ Age + Shape + Margin + Density, data = db_train)
+recipe <-recipe %>%
+  step_impute_knn(all_predictors(),
+                 neighbors = 5) %>%
+  step_BoxCox(all_numeric(),-all_outcomes()) %>%
+  step_other(all_nominal(), threshold = .1, other = "other")
+recipe <- recipe %>%
+  step_zv(all_predictors(), -all_outcomes()) %>%  # Remove zero-variance predictors
+  step_normalize(all_numeric(), -all_outcomes()) %>%  # Normalize numeric predictors
+  step_dummy(all_nominal(), -all_outcomes()) %>%  # Create dummy variables for categorical predictors
+  step_corr(all_predictors(), -all_outcomes(), threshold = 0.9)  # Remove highly correlated predictors
+
+```
+
+### 1.9) Show all steps in the recipe
+```{r}
+prep <-prep (recipe, db_train)
+tidy (prep)
+```
+
+### 1.10) Examine changes of a specific pre-processing step (number 6 = normalize)
+```{r}
+tidy (prep, number = 6)
+```
+
+### 1.11) Examine pre-processed training data
+```{r}
+prep[["template"]]
+```
+
+## 2) Algorithm Development
+### 2.1) Define multiple performance metrics for model training
+```{r}
+MySummary <-function (data, lev = NULL, model = NULL){
+  a1 <-defaultSummary(data, lev, model)
+  b1 <-twoClassSummary(data, lev, model)
+  c1 <-prSummary(data, lev, model)
+  out <-c(a1, b1, c1)
+out}
+```
+
+
+### 2.2) Define general training parameters for cross-validation and hypergrid-search
+```{r}
+cv <-trainControl (method = "repeatedcv",
+                   number = 10,
+                   repeats = 3,
+                   search = "grid",
+                   verboseIter = TRUE,
+                   classProbs = TRUE,
+                   returnResamp = "final",
+                   savePredictions = "final",
+                   summaryFunction = MySummary,
+                   selectionFunction = "tolerance",
+                   allowParallel = TRUE)
+```
+
+### 2.3) Define general training parameters for cross-validation and random grid- search
+```{r}
+cv <-trainControl(method = "repeatedcv",
+                  number = 10,
+                  repeats = 3,
+                  search = "random",
+                  verboseIter = TRUE,
+                  classProbs = TRUE,
+                  returnResamp = "final",
+                  savePredictions = "final",
+                  summaryFunction = MySummary,
+                  selectionFunction = "tolerance",
+                  allowParallel = TRUE)
+```
+
+### 2.4) Define general training parameters for adaptive resampling for hyperparameter tuing
+```{r}
+adaptControl <-trainControl(method = "adaptive_cv",
+                            number = 10,
+                            repeats = 3,
+                            adaptive = list(min = 5, alpha = 0.05, method = "gls", complete = TRUE),
+                            search = "random",
+                            verboseIter = TRUE,classProbs = TRUE,
+                            returnResamp = "final",
+                            savePredictions = "final",
+                            summaryFunction = MySummary,
+                            selectionFunction = "tolerance",
+                            allowParallel = TRUE)
+```
+
+### 2.5) Hypergrid for Logistic Regression with Elastic Net Penalty
+```{r}
+hyper_grid_glm <-expand.grid(alpha = seq(from = 0.01, to = 1, by = 0.01),
+                             lambda = seq(from = 0.01, to = 1, by = 0.01))
+hyper_grid_glm
+```
+
+### 2.6) Hypergrid for XGBoost Tree
+```{r}
+hyper_grid_xgboost <-expand.grid(nrounds = seq(from = 25, to = 100, by = 25),
+                                 max_depth = seq(from = 5, to = 35, by = 10),
+                                 eta = seq(from = 0.2, to = 1, by = 0.2),
+                                 gamma = seq(from = 1, to = 10, by = 1),
+                                 colsample_bytree = seq(from = 0.6, to = 1, by = 0.2),
+                                 min_child_weight = seq(from = 2, to = 5, by = 1),
+                                 subsample = 1)
+hyper_grid_xgboost
+```
+
+### 2.7) Hypergrid for MARS algorithm
+```{r}
+hyper_grid_mars <-expand.grid(degree = seq(from = 1, to = 3, by = 1),
+                              nprune = seq(from = 1, to = 10, by = 1))
+```
+
+### 2.8) Hypergrid for SVM with polynomial kernel
+```{r}
+hyper_grid_svm <-expand.grid(degree = seq(from = 1, to = 11, by = 2),
+                             scale = seq(from = 0.1, to = 1, by = 0.1),
+                             C = seq(from = 0.5, to = 8, by = 0.5))
+```
+
+
+### 2.9) Hypergrid for multi-layer perceptron with dropout cost (deep neural network)
+```{r}
+hyper_grid_nn <-expand.grid(size = seq(from = 1, to = 21, by = 10),
+                            dropout = seq(from = 0.1, to = 0.3, by = 0.1),
+                            batch_size = seq(from = 1, to = 11, by = 5),
+                            lr = seq(from = 0.25, to = 1, by = 0.25),
+                            rho = seq(from = 0.25, to = 1, by = 0.25),
+                            decay = seq(from = 0.1, to = 0.5, by = 0.2),
+                            cost = seq(from = 0.25, to = 1, by = 0.25),
+                            activation = 'relu')
+```
+
+### 2.10) Train Logistic Regression with Elastic Net Penalty (hypergrid search)
+```{r}
+cv_glm <-caret::train(recipe,
+                      data = db_train,
+                      method = "glmnet",
+                      metric = "Kappa",
+                      trControl = cv,
+                      tuneGrid = hyper_grid_glm)
+```
+
+### 2.11) Train XGBoost Tree (hypergrid search)
+```{r}
+cv_xgboost <-caret::train(recipe,
+                          data = db_train,
+                          method = "xgbTree",
+                          metric = "Kappa",
+                          trControl = cv,
+                          tuneGrid = hyper_grid_xgboost)
+```
+
+### 2.12) Train MARS algorithm (hypergrid search)
+```{r}
+cv_mars <-caret::train(recipe,
+                       data = db_train,
+                       method = "earth",
+                       metric = "Kappa",
+                       trControl = cv,
+                       tuneGrid = hyper_grid_mars)
+```
+
+### 2.13) Train SVM with polynomial kernel (random grid search)
+```{r}
+cv_svm <-caret::train(recipe,
+                      data = db_train,
+                      method = "svmPoly",
+                      metric = "Kappa",
+                      tuneLength = 30,
+                      trControl = cv_svm)
+```
+
+### 2.14) Train multi-layer perceptron with dropout cost (deep neural network) (random grid search)
+```{r}
+cv_nn <-caret::train(recipe,
+                     data = db_train,
+                     method = "mlpKerasDropoutCost",
+                     metric = "Kappa",
+                     tuneLength = 30,
+                     trControl = cv_nn)
+```
+
+## 3) Internal Testing
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,790 @@
+---
+title: "Machine Learning; Malaria Data set"
+author: "Lumumba Wandera Victor"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = NA, message = FALSE, warning = FALSE,
+                      fig.height = 5, fig.width = 7)
+```
+
+# AMMNET Training on Handling Imbalanced Malaria Data for Machine Learning-Based Models####
+## RESAMPLING METHODS WITH R
+### INSTRUCTOR:O.OLAWALE AWE, PhD.
+#### AMMnet Annual Meeting, Kigali, 2024
+
+## Install Packages and Libraries
+```{r}
+#install.packages('caret', dependences=TRUE)
+#install.packages('tidyverse', dependences=TRUE)
+```
+### Load Some Necessary Packages and Libraries
+
+#### Or Simply run the following codes to install all packages at once.
+```{r}
+list.of.packages <- c("psych", "ggplot2", "caretEnsemble", "tidyverse", "mlbench", "caret", "flextable", "mltools", "tictoc", "ROSE", "kernlab", "smotefamily", "klaR", "ada")
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)) install.packages(new.packages)
+```
+
+
+##Load libraries
+```{r}
+library(caret) #for machine learning models
+library(psych) ##for description of  data
+library(ggplot2) ##for data visualization
+library(caretEnsemble)##enables the creation of ensemble models
+library(tidyverse) ##for data manipulation
+library(mlbench)  ## for benchmarking ML Models
+library(flextable) ## to create and style tables
+library(mltools) #for hyperparameter tuning
+library(tictoc) #for determining the time taken for a model to run
+library(ROSE)  ## for random oversampling
+library(smotefamily) ## for smote sampling
+library(ROCR) ##For ROC curve
+```
+
+####Load the Health Data you want to work on 
+
+# Load the Malaria data given
+```{r}
+diabetesTib <- read.csv("Diabetes.csv")
+diabetesTib <- diabetesTib %>%
+  mutate(across(where(is.character), as.factor))
+
+diabetesTib <- diabetesTib %>%
+  mutate(across(where(is.factor), as.numeric))
+
+diabetesTib$diabetes <- factor(diabetesTib$diabetes, levels = c(0,1),
+                               labels = c("No", "Yes"))
+```
+
+### View the Dimension of the Data
+```{r}
+dim(diabetesTib)
+head(diabetesTib,5)
+```
+
+### View the variable names
+```{r}
+names(diabetesTib)
+```
+### str(odata)
+```{r}
+attach(diabetesTib)
+summary(diabetesTib) ###Descriptive Statistics
+describe(diabetesTib)###Descriptive Statistics
+sum(is.na(diabetesTib))###Check for missing data
+```
+
+###Note: For the purpose of this training, 
+#it is assumed that the data is already clean and preprocessed 
+
+###Rename the classes of the Target variable and plot it to determine imbalance
+```{r, fig.height=6, fig.width=8}
+###Plot Target Variable
+plot(diabetes, names= c('No', 'Yes'), col=c(3,2), ylim=c(0, 600), ylab='Respondent', xlab='Diabetes Infection')
+box()
+```
+
+
+### DATA PARTITION FOR MACHINE LEARNING
+```{r}
+head(diabetesTib)
+```
+
+```{r}
+ind=sample(2, nrow(diabetesTib),replace =T, prob=c(0.70,0.30))
+train=diabetesTib[ind==1,]
+test= diabetesTib[ind==2,]
+```
+
+## Get the dimensions of your train and test data
+```{r}
+dim(train)
+dim(test)
+```
+
+Now Let's train some machine learning models using package caret. The caret R package (Kuhn et al. 2021) (short for Classification And REgression Training) to carry out machine learning tasks in RStudio. The caret package offers a range of tools and models for classification and regression machine learning problems. In fact, it offers over 200 different machine learning models from which to choose.  Don’t worry, we don’t expect you to use them all!
+
+### VIEW THE MODELS IN CARET
+```{r}
+models= getModelInfo()
+names(models)
+```
+
+### Check for zero variance predictors:
+```{r}
+nzv <- nearZeroVar(diabetesTib[,-9], saveMetrics = TRUE)
+```
+
+The purpose of this code is to identify features in a dataset with near zero variance. Here's a breakdown of what each part does:
+
+nzv <- nearZeroVar(mdata[,-18], saveMetrics = TRUE): This line defines a function called nearZeroVar and captures its output in the variable nzv.
+
+mdata[,-18]: This part selects all rows of the data in mdata and excludes the last 18 columns.
+nearZeroVar: This is likely a user-defined function that performs the main analysis.
+saveMetrics = TRUE: This argument instructs the nearZeroVar function to save additional metrics during its analysis (potentially standard deviation for each feature).
+print(nzv): This line simply prints the output of the nearZeroVar function, which is a list of column names that have near zero variance.
+
+In essence, this code helps you clean your data by finding features that barely change across your observations. These features might not be informative for your analysis and can be removed to improve the efficiency of your models.
+
+```{r}
+print(nzv)
+```
+
+The results above show that there is no feature with zero variance
+## Remove nzv
+```{r}
+#mdata1 <- mdata[, !nzv$nzv]
+#dim(mdata1)
+```
+
+```{r}
+missing_values <- colSums(is.na(train))
+missing_values
+```
+
+
+
+### Prepare training scheme for cross-validation
+```{r}
+control <- trainControl(method="repeatedcv", number=10, repeats=5)
+```
+
+###TRAIN YOUR ML MODELS
+# Train a SVM model
+```{r}
+set.seed(123)
+tic()
+SvmModel <- train(diabetes~., data=train, method="svmRadial", trControl=control, na.action = na.omit)
+toc()
+SvmModel
+```
+
+The provided code snippet implements a Support Vector Machine (SVM) model for classification using the caret package in R. Here's a breakdown of the code:
+
+set.seed(123): This line sets a random seed for reproducibility. When training models with random components, setting a seed ensures that the same splits and random choices are made whenever the code is run, allowing for consistent results.
+
+tic(): This function (likely user-defined or from a specific package) is typically used to start measuring execution time. It's a placeholder to track how long the model training takes.
+
+~.: The tilde (~) indicates that all other variables in the train data frame will be used as predictors.
+data=train: This argument specifies the training data set (train).
+method="svmRadial": This defines the machine learning method, which is set to "svmRadial" indicating a radial basis function (RBF) kernel for the SVM model. There are other kernel options available in caret.
+trControl=control: This argument likely specifies a trainControl object (control) that controls aspects of the training process like resampling (cross-validation) for model evaluation. Without seeing the definition of control, it's difficult to know the exact details.
+na.action = na.omit: This argument specifies how to handle missing values (NA) in the data. Here, na.omit indicates that rows with missing values will be excluded from the training process.
+toc(): This function (likely user-defined or from a specific package) is typically used to stop measuring execution time and potentially display the elapsed time. It complements the tic() call to measure the training time of the SVM model.
+
+Overall, the code trains a Support Vector Machine model to classify the target variable "severe_malaria" (converted to a factor) based on all other features in the train data set. It likely uses a radial basis function kernel and incorporates some form of resampling (based on the unseen control argument) for model evaluation during training.
+```{r}
+Svmpred= predict(SvmModel,newdata = test)
+SVM.cM<- confusionMatrix(Svmpred,
+                         reference = test$diabetes, positive = 'Yes', mode='everything')
+SVM.cM
+```
+
+### View the Predicted Case and the Ground Truth
+```{r}
+data.f <- data.frame(Svmpred, test$diabetes)
+data.f
+```
+
+```{r}
+m1 <- c(SVM.cM$overall['Accuracy'], SVM.cM$byClass[c(1, 2, 5, 7, 11)])
+m1
+```
+
+### plotting confusion matrix
+```{r}
+SVM.cM$table
+fourfoldplot(SVM.cM$table, col=c(2,3), main="Imbalanced SVM Confusion Matrix")
+plot(varImp(SvmModel, scale=T))
+```
+
+## Train the decision Tree
+```{r}
+set.seed(123)
+tic()
+DTModel <- train(diabetes~., data=train, method="rpart", trControl=control)
+toc()
+DTModel
+```
+
+```{r}
+DTpred=predict(DTModel,newdata = test)
+DT.cM<- confusionMatrix(DTpred,
+                        reference = test$diabetes, positive = 'Yes', mode='everything')
+DT.cM
+```
+
+### Prediction
+```{r}
+DT <- c(DT.cM$overall['Accuracy'], knn.cM$byClass[c(1, 2, 5, 7, 11)])
+DT
+```
+
+### plotting confusion matrix
+```{R}
+DT.cM$table
+fourfoldplot(DT.cM$table, col=rainbow(4), main="Imbalanced RF Confusion Matrix")
+```
+
+## CREATE ROC curve for your models-try for all models
+### Make predictions on the test set using type='prob'
+```{R}
+preddt <- predict(DTModel, newdata = test, type = "prob")
+```
+
+### Create a prediction object needed by ROCR
+```{r}
+pred_dt <- prediction(preddt[, "Yes"], test$diabetes)
+```
+
+### Calculate performance measures like ROC curve
+```{r}
+perf_dt <- performance(pred_dt, "tpr", "fpr")
+```
+
+### Plot the ROC curve
+```{r}
+plot(perf_dt, colorize = TRUE, main = "ROC Curve-Decision Tree")
+auc_value <- performance(pred_dt, "auc")@y.values[[1]] ### Add AUC value as text on the plot
+auc_label <- paste("AUC =", round(auc_value, 2))
+text(0.5, 0.3, auc_label, col = "blue", cex = 1.5)  # Adjust position
+```
+
+
+## Train a Random Forest model
+```{r}
+set.seed(123)
+tic()
+RFModel <- train(diabetes~., data=train, method="rf", trControl=control)
+toc()
+RFModel
+```
+
+### Prediction
+```{r}
+RFpred=predict(RFModel,newdata = test)
+RF.cM<- confusionMatrix(RFpred,
+                        reference = test$diabetes, positive = 'Yes', mode='everything')
+RF.cM
+```
+
+```{R}
+m2 <- c(RF.cM$overall['Accuracy'], RF.cM$byClass[c(1, 2, 5, 7, 11)])
+m2
+```
+
+### plotting confusion matrix
+```{R}
+RF.cM$table
+fourfoldplot(RF.cM$table, col=rainbow(4), main="Imbalanced RF Confusion Matrix")
+plot(varImp(RFModel, scale=T))
+```
+
+## CREATE ROC curve for your models-try for all models
+### Make predictions on the test set using type='prob'
+```{R}
+predrf <- predict(RFModel, newdata = test, type = "prob")
+```
+
+### Create a prediction object needed by ROCR
+```{r}
+pred_rf <- prediction(predrf[, "Yes"], test$diabetes)
+```
+
+### Calculate performance measures like ROC curve
+```{r}
+perf_rf <- performance(pred_rf, "tpr", "fpr")
+```
+
+### Plot the ROC curve
+```{r}
+plot(perf_rf, colorize = TRUE, main = "ROC Curve-Random Forest")
+auc_value <- performance(pred_rf, "auc")@y.values[[1]] ### Add AUC value as text on the plot
+auc_label <- paste("AUC =", round(auc_value, 2))
+text(0.5, 0.3, auc_label, col = "blue", cex = 1.5)  # Adjust position
+```
+
+### Train an Logisitic Regression model
+```{r}
+set.seed(123)
+lrModel <- train(diabetes~., 
+                 data=train, 
+                 method="glm", 
+                 trControl=control)
+lrModel
+```
+
+### Prediction
+```{r}
+lrpred=predict(lrModel,newdata = test)
+lr.cM<- confusionMatrix(lrpred,
+                        reference = test$diabetes, positive = 'Yes', mode='everything')
+lr.cM
+```
+
+```{r}
+m3 <- c(lr.cM$overall['Accuracy'], lr.cM$byClass[c(1, 2, 5, 7, 11)])
+m3
+```
+
+### plotting confusion matrix
+```{r}
+lr.cM$table
+fourfoldplot(lr.cM$table, col=rainbow(4), main="Imbalanced LR Confusion Matrix")
+plot(varImp(lrModel, scale=T))
+```
+
+### Make predictions on the test set using type='prob'
+```{r}
+predlr <- predict(lrModel, newdata = test, type = "prob")
+predlr
+```
+### Load the ROCR package
+```{r}
+library(ROCR)
+```
+
+### Create a prediction object needed by ROCR
+```{r}
+pred_lr <- prediction(predlr[, "Yes"], test$diabetes)
+```
+
+### Calculate performance measures like ROC curve
+```{r}
+perf_lr <- performance(pred_lr, "tpr", "fpr")
+perf_lr
+```
+
+### Plot the ROC curve
+```{r}
+plot(perf_lr, colorize = TRUE, main = "ROC Curve-Logistic Regression")
+auc_value <- performance(pred_lr, "auc")@y.values[[1]]
+auc_label <- paste("AUC =", round(auc_value, 2))
+text(0.5, 0.3, auc_label, col = "blue", cex = 1.5) # Add AUC value as text on the plot
+```
+
+### Train a k- Nearest Neigbour model
+```{r}
+set.seed(123)
+knnModel <- train(diabetes~., 
+                  data=train, 
+                  method="knn", 
+                  trControl=control)
+knnModel
+```
+
+### View the Nearest Neighbors
+```{r}
+knnModel$finalModel
+```
+
+### Prediction
+```{r}
+knnpred=predict(knnModel,newdata = test)
+knn.cM<- confusionMatrix(knnpred,
+                         reference = test$diabetes, positive = 'Yes', mode='everything')
+knn.cM
+m4 <- c(knn.cM$overall['Accuracy'], knn.cM$byClass[c(1, 2, 5, 7, 11)])
+m4
+```
+
+
+### plotting confusion matrix
+```{r}
+knn.cM$table
+fourfoldplot(knn.cM$table, col=rainbow(4), main="Imbalanced KNN Confusion Matrix")
+plot(varImp(knnModel, scale=T))
+```
+
+## Quadratic and Linear Discriminant Analysis
+```{r, warning=FALSE}
+qda_fit <- qda(diabetes ~., data = train)
+qda_preds <- predict(qda_fit, test)
+```
+
+
+```{r, warning=FALSE}
+confusionMatrix(data = as.factor(qda_preds$class), reference = test$diabetes)
+```
+
+## Lda
+```{r}
+lda_fit <- lda(diabetes ~., data = train)
+lda_preds <- predict(lda_fit, test)
+confusionMatrix(data = as.factor(lda_preds$class), reference = test$diabetes)
+```
+
+
+## ROC
+```{r, message=FALSE, warning=FALSE}
+pred_qda <- qda_preds$posterior[,2]
+test %>% mutate(pred=pred_qda, label=diabetes) %>%
+  ggplot(aes(label,pred)) + geom_boxplot()
+```
+
+### LDA Prediction
+```{r}
+pred_lda <- lda_preds$posterior[,2]
+test %>% mutate(pred=pred_lda, label=diabetes) %>%
+  ggplot(aes(label,pred)) + geom_boxplot()
+```
+
+### QDA ROC
+```{r, message=FALSE, warning=FALSE}
+library(pROC)
+roc_qda <- roc(test$diabetes, pred_qda)
+plot(roc_qda)
+```
+
+### LDA ROC
+```{r}
+roc_lda <- roc(test$diabetes, pred_lda)
+plot(roc_lda)
+```
+
+We can also create a nicer looking plot using `ggroc`:
+```{r}
+ggroc(list("QDA" = roc_qda)) +
+  theme(legend.title = element_blank()) +
+  geom_segment(aes(x = 1, xend = 0, y = 0, yend = 1), color = "black", linetype = "dashed") +
+  xlab("Specificity") +
+  ylab("Sensitivity") 
+```
+
+
+Here are the results for LDA
+
+```{r}
+pred_lda <- lda_preds$posterior[,2]
+roc_lda <- roc(test$diabetes, pred_lda)
+
+ggroc(list("QDA" = roc_qda, "LDA" = roc_lda)) +
+  theme(legend.title = element_blank()) +
+  geom_segment(aes(x = 1, xend = 0, y = 0, yend = 1), color = "black", linetype = "dashed") +
+  xlab("Specificity") +
+  ylab("Sensitivity") 
+```
+
+We can also compare to KNN with two different values of `k`: 5 and 51.
+
+```{r}
+fit1 <- knn3(diabetes~., data = train, k = 5)
+
+pred_knn <- predict(fit1, newdata = test)[,2]
+roc_knn <- roc(test$diabetes, pred_knn)
+
+
+fit2 <- knn3(diabetes~., data = train, k = 51)
+pred_knn2 <- predict(fit2, newdata = test)[,2]
+roc_knn2  <- roc(test$diabetes, pred_knn2)
+
+ggroc(list("QDA" = roc_qda, "LDA" = roc_lda, "kNN, k = 5" = roc_knn2, "kNN, k = 51" = roc_knn)) +
+  theme(legend.title = element_blank()) +
+  geom_segment(aes(x = 1, xend = 0, y = 0, yend = 1), color = "black", linetype = "dashed") +
+  xlab("Specificity") +
+  ylab("Sensitivity")
+```
+
+To summarize these curves into one single number that can be compared across methods, it is common to take the area under the ROC curve (abbreviated AUC or AUROC). Higher values indicate better performance.
+
+```{r}
+auc(roc_qda)
+auc(roc_lda)
+auc(roc_knn)
+auc(roc_knn2)
+```
+
+### Train a Neural Net model
+```{r}
+set.seed(123)
+nnModel <- train(diabetes~., 
+                 data=train, 
+                 method="nnet", 
+                 trControl=control)
+nnModel
+```
+
+### Neural Network Model
+```{r}
+nnModel$finalModel
+```
+
+```{r}
+nnpred=predict(nnModel,newdata = test)
+nn.cM<- confusionMatrix(nnpred,
+                        reference = test$diabetes, positive = 'Yes', mode='everything')
+nn.cM
+m5 <- c(nn.cM$overall['Accuracy'], nn.cM$byClass[c(1, 2, 5, 7, 11)])
+m5
+```
+### plotting confusion matrix
+```{r}
+nn.cM$table
+fourfoldplot(nn.cM$table, col=rainbow(4), main="Imbalanced NN Confusion Matrix")
+plot(varImp(nnModel, scale=T))
+```
+
+# Train a Naive Bayes model
+```{r}
+set.seed(123)
+nbModel <- train(diabetes~., data=train, method="nb", trControl=control)
+nbModel
+```
+
+### Prediction
+```{r}
+nbpred=predict(nbModel,newdata = test)
+nb.cM<- confusionMatrix(nbpred,
+                        reference = test$diabetes, positive = 'Yes', mode='everything')
+nb.cM
+m6 <- c(nb.cM$overall['Accuracy'], nb.cM$byClass[c(1, 2, 5, 7, 11)])
+m6
+```
+
+### plotting confusion matrix
+```{r}
+nb.cM$table
+fourfoldplot(nb.cM$table, col=rainbow(4), main="Imbalanced NB Confusion Matrix")
+plot(varImp(nbModel, scale=T))
+```
+
+### Train a Linear Discriminant Analysis model
+```{r}
+set.seed(123)
+ldaModel <- train(diabetes~., data=train, method="lda", trControl=control)
+ldaModel
+ldapred=predict(ldaModel,newdata = test)
+lda.cM<- confusionMatrix(ldapred,
+                         reference = test$diabetes, positive = 'Yes', mode='everything')
+m7 <- c(lda.cM$overall['Accuracy'], lda.cM$byClass[c(1, 2, 5, 7, 11)])
+m7
+```
+
+### Train Quadratic Discriminant Analysis Model
+```{r}
+set.seed(123)
+qdaModel <- train(diabetes~., data=train, method="qda", trControl=control)
+qdaModel
+qdapred=predict(qdaModel,newdata = test)
+qda.cM<- confusionMatrix(qdapred,
+                         reference = test$diabetes, positive = 'Yes', mode='everything')
+m8 <- c(qda.cM$overall['Accuracy'], qda.cM$byClass[c(1, 2, 5, 7, 11)])
+m8
+```
+
+
+### plotting confusion matrix
+```{r}
+lda.cM$table
+fourfoldplot(lda.cM$table, col=rainbow(4), main="Imbalanced LDA Confusion Matrix")
+plot(varImp(ldaModel, scale=T))
+```
+
+### Train a Linear Vector Quantization model
+```{r}
+set.seed(123)
+lvqModel <- train(diabetes~., data=train, method="lvq", trControl=control)
+lvqModel
+lvqpred=predict(lvqModel,newdata = test)
+lvq.cM<- confusionMatrix(lvqpred,
+                         reference = test$diabetes, positive = 'Yes', mode='everything')
+m9 <- c(lvq.cM$overall['Accuracy'], lvq.cM$byClass[c(1, 2, 5, 7, 11)])
+m9
+```
+
+### plotting confusion matrix
+```{r}
+lvq.cM$table
+fourfoldplot(lvq.cM$table, col=rainbow(4), main="Imbalanced LDA Confusion Matrix")
+plot(varImp(lvqModel, scale=T))
+```
+
+### Train a Bagging model
+```{r}
+set.seed(123)
+bagModel <- train(diabetes~., data=train, method="treebag", trControl=control)
+bagModel
+bagpred=predict(bagModel,newdata = test)
+bag.cM<- confusionMatrix(bagpred,
+                         reference = test$diabetes, positive = 'Yes', mode='everything')
+m10 <- c(bag.cM$overall['Accuracy'], bag.cM$byClass[c(1, 2, 5, 7, 11)])
+m10
+```
+
+### plotting confusion matrix
+```{r}
+bag.cM$table
+fourfoldplot(bag.cM$table, col=rainbow(4), main="Imbalanced Bagging Confusion Matrix")
+plot(varImp(bagModel, scale=T))
+```
+
+### Train a Boosting model
+```{r}
+set.seed(123)
+boModel <- train(diabetes~., data=train, method="ada", trControl=control)
+boModel
+bopred=predict(boModel,newdata = test)
+bo.cM<- confusionMatrix(bopred,
+                        reference = test$diabetes, positive = 'Yes', mode='everything')
+m11 <- c(bo.cM$overall['Accuracy'], bo.cM$byClass[c(1, 2, 5, 7, 11)])
+m11
+```
+
+```{r}
+bo.cM
+```
+
+### plotting confusion matrix
+```{r}
+bo.cM$table
+fourfoldplot(bo.cM$table, col=rainbow(4), main="Imbalanced Boosting Confusion Matrix")
+plot(varImp(boModel, scale=T))
+```
+
+## TABULATE YOUR RESULTS
+```{r}
+measure <-round(data.frame(SVM= m1, DTREE = DT, RFOREST= m2, LR = m3, KNN=m4, NN=m5, NB=m6,LDA = m7, QDA = m8, LVQ = m9, Bagging = m10, Boosting = m11), 3)
+dim(measure)
+rownames(measure)=c('Accuracy','Sensitivity', 'Specificity', 'Precision','F1-Score', 'Balanced Accuracy')
+flextable(measure)
+measure
+View(measure)
+#xtable(measure.score, digits = 3)
+```
+
+### collect all resamples and compare
+```{r}
+results <- resamples(list(SVM=SvmModel, Bagging=bagModel,LR=lrModel,NB=nbModel, RF=RFModel))
+```
+
+### summarize the distributions of the results 
+```{r}
+View(results$values)
+summary(results)
+```
+
+### boxplots of results
+```{r}
+bwplot(results)
+```
+
+### dot plots of results
+```{r}
+dotplot(results)
+```
+
+### Oversampling 
+# Oversampled data --------------------------------------------------------
+```{r}
+ over <- ovun.sample(diabetes~., data = train, method = "over")$data
+ over
+```
+
+```{r}
+library(xtable)
+xtable(table(over$class))
+```
+ 
+## Model building ----------------------------------------------------------
+### prepare training scheme for cross-validation
+```{r} 
+control <- trainControl(method="repeatedcv", number=10, repeats=5)
+```
+ 
+## train an SVM model
+```{r}
+ set.seed(123)
+ over.svmModel <- train(diabetes~., data=over, method="svmRadial", trControl=control)
+ over.svmModel
+ over.svmpred=predict(over.svmModel,newdata = test)
+ over.SVM.cM<- confusionMatrix(over.svmpred,
+                               reference = test$diabetes, positive = 'Yes', mode='everything')
+ over.SVM.cM
+ over.m1<- over.SVM.cM$byClass[c(1, 2, 5, 7, 11)]
+ over.m1
+```
+
+###plotting confusion matrix
+```{r, fig.height=5, fig.width=7}
+ over.SVM.cM$table
+ fourfoldplot(over.SVM.cM$table, col=rainbow(4), main="Oversampled SVM Confusion Matrix")
+```
+ 
+### Plotting the ROC Curve and AUC
+```{r}
+# Load required libraries
+library(caret)
+library(pROC)
+library(ggplot2)
+
+# Assuming you have trained your models and they are stored in knnModel, svmModel, and xgboostModel
+# Here, we will predict probabilities and generate ROC and AUC for each model
+
+# Function to generate ROC and AUC
+generate_roc <- function(model, test_data, label_col, model_name) {
+  predictions <- predict(model, newdata=test_data, type="prob")[,2]  # Assuming the second column has the probability for the positive class
+  roc_obj <- roc(test_data[[label_col]], predictions)
+  auc_value <- auc(roc_obj)
+  return(list(roc=roc_obj, auc=auc_value, name=model_name))
+}
+
+# Generate ROC and AUC for each model
+roc_knn <- generate_roc(knnModel, test, "diabetes", "KNN")
+roc_svm <- generate_roc(SvmModel, test, "diabetes", "SVM")
+roc_log <- generate_roc(lrModel, test, "diabetes", "LogReg")
+
+# Combine ROC data for plotting
+roc_data <- list(roc_knn, roc_svm, roc_log)
+
+# Plot ROC curves
+plot(roc_data[[1]]$roc, main="ROC Curves", col=1, lty=1)
+for(i in 2:length(roc_data)) {
+  plot(roc_data[[i]]$roc, add=TRUE, col=i, lty=i)
+}
+
+# Add legend with model names and AUC values
+legend_text <- sapply(roc_data, function(x) paste(x$name, " (AUC = ", round(x$auc, 2), ")", sep=""))
+legend("bottomright", legend=legend_text, col=1:length(roc_data), lty=1:length(roc_data))
+
+# Optional: Use ggplot2 for enhanced plotting
+# Convert ROC data to a dataframe for ggplot2
+roc_df <- data.frame()
+for(i in 1:length(roc_data)) {
+  df <- data.frame(
+    TPR=roc_data[[i]]$roc$sensitivities,
+    FPR=1 - roc_data[[i]]$roc$specificities,
+    Model=rep(roc_data[[i]]$name, length(roc_data[[i]]$roc$sensitivities)),
+    AUC=rep(round(roc_data[[i]]$auc, 2), length(roc_data[[i]]$roc$sensitivities))
+  )
+  roc_df <- rbind(roc_df, df)
+}
+
+# Plot using ggplot2
+ggplot(roc_df, aes(x=FPR, y=TPR, color=Model, linetype=Model)) +
+  geom_line(size=1.2) +
+  geom_abline(slope=1, intercept=0, linetype="dashed", color="grey") +
+  labs(title="ROC Curves", x="False Positive Rate", y="True Positive Rate") +
+  theme_minimal() +
+  theme(legend.title=element_blank()) +
+  scale_color_discrete(labels=legend_text) +
+  scale_linetype_discrete(labels=legend_text)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+

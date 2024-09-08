@@ -1,0 +1,901 @@
+---
+title: "MODELING BREAST CANCER USING MACHINE LEARNING ALGORITHMS"
+author: "Lumumba Wandera Victor"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = NA, message = FALSE, warning = FALSE,
+                      fig.height = 5, fig.width = 7)
+```
+
+## Wisconsin Breast Cancer Database
+### Description
+The objective is to identify each of a number of benign or malignant classes. Samples arrive periodically as Dr. Wolberg reports his clinical cases. The database therefore reflects this chronological grouping of the data. This grouping information appears immediately below, having been removed from the data itself. Each variable except for the first was converted into 11 primitive numerical attributes with values ranging from 0 through 10. There are 16 missing attribute values. See cited below for more details.
+
+### Load the following libraries
+```{r}
+list.of.packages <- c("psych", "ggplot2", "caretEnsemble", "tidyverse", "mlbench", "caret", "flextable", "mltools", "tictoc", "ROSE", "kernlab", "smotefamily", "klaR", "ada")
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)) install.packages(new.packages)
+library(caret) #for machine learning models
+library(psych) ##for description of  data
+library(ggplot2) ##for data visualization
+library(caretEnsemble)##enables the creation of ensemble models
+library(tidyverse) ##for data manipulation
+library(mlbench)  ## for benchmarking ML Models
+library(flextable) ## to create and style tables
+library(mltools) #for hyperparameter tuning
+library(tictoc) #for determining the time taken for a model to run
+library(ROSE)  ## for random oversampling
+library(smotefamily) ## for smote sampling
+library(ROCR) ##For ROC curve
+```
+### Load the Data
+```{r}
+data("BreastCancer", package = "mlbench")
+head(BreastCancer,5)
+```
+
+### Format
+A data frame with 699 observations on 11 variables, one being a character variable, 9 being ordered or nominal, and 1 target class.
+
+[,1]	Id	Sample code number
+[,2]	Cl.thickness	Clump Thickness
+[,3]	Cell.size	Uniformity of Cell Size
+[,4]	Cell.shape	Uniformity of Cell Shape
+[,5]	Marg.adhesion	Marginal Adhesion
+[,6]	Epith.c.size	Single Epithelial Cell Size
+[,7]	Bare.nuclei	Bare Nuclei
+[,8]	Bl.cromatin	Bland Chromatin
+[,9]	Normal.nucleoli	Normal Nucleoli
+[,10]	Mitoses	Mitoses
+[,11]	Class	Class
+
+### Source
+Creator: Dr. WIlliam H. Wolberg (physician); University of Wisconsin Hospital ;Madison; Wisconsin; USA
+
+Donor: Olvi Mangasarian (mangasarian@cs.wisc.edu)
+
+Received: David W. Aha (aha@cs.jhu.edu)
+
+These data have been taken from the UCI Repository Of Machine Learning Databases (Blake & Merz 1998) and were converted to R format by Evgenia Dimitriadou in the late 1990s.
+
+The current version of the UC Irvine Machine Learning Repository Breast Cancer Wisconsin (Original) data set is available from doi:10.24432/C5HP4Z.
+
+References
+1. Wolberg,W.H., and Mangasarian,O.L. (1990). Multisurface method of pattern separation for medical diagnosis applied to breast cytology. In Proceedings of the National Academy of Sciences, 87, 9193-9196.
+- Size of data set: only 369 instances (at that point in time)
+- Collected classification results: 1 trial only
+- Two pairs of parallel hyperplanes were found to be consistent with 50% of the data
+- Accuracy on remaining 50% of dataset: 93.5%
+- Three pairs of parallel hyperplanes were found to be consistent with 67% of data
+- Accuracy on remaining 33% of dataset: 95.9%
+
+2. Zhang,J. (1992). Selecting typical instances in instance-based learning. In Proceedings of the Ninth International Machine Learning Conference (pp. 470-479). Aberdeen, Scotland: Morgan Kaufmann.
+- Size of data set: only 369 instances (at that point in time)
+- Applied 4 instance-based learning algorithms
+- Collected classification results averaged over 10 trials
+- Best accuracy result:
+- 1-nearest neighbor: 93.7%
+- trained on 200 instances, tested on the other 169
+- Also of interest:
+- Using only typical instances: 92.2% (storing only 23.1 instances)
+- trained on 200 instances, tested on the other 169
+
+Blake, C.L. & Merz, C.J. (1998). UCI Repository of Machine Learning Databases. Irvine, CA: University of California, Irvine, Department of Information and Computer Science. Formerly available from ‘⁠http://www.ics.uci.edu/~mlearn/MLRepository.html⁠’.
+
+In the context of breast cancer and the BreastCancer dataset, "benign" and "malignant" refer to the nature of the breast tumor:
+
+A benign tumor is non-cancerous and des not invade nearby tissues or spread to other parts of the body and generally grows slowly and the cells are similar to normal cells. Often has a well-defined border or encapsulated. Typically considered less dangerous and often not life-threatening. However, they can sometimes cause problems if they press on vital structures such as blood vessels or nerves.
+
+On the other hand, a malignant tumor is cancerous and can invade and destroy nearby tissues and organs. Can spread to other parts of the body (metastasize) through the blood or lymphatic system. Cells often appear abnormal under a microscope. They tends to grow more rapidly compared to benign tumors. Can be life-threatening if not treated effectively. Often requires aggressive treatment like surgery, radiation, or chemotherapy. 
+
+In the BreastCancer dataset, the Class attribute indicates whether a given tumor is benign or malignant, serving as the target variable for classification tasks. Here's a brief look at how these terms are represented in the dataset:
+
+Benign: Represented typically by the label "benign" in the dataset.
+Malignant: Represented typically by the label "malignant" in the dataset.
+
+### Importance in Medical Diagnosis:
+Diagnosis: Distinguishing between benign and malignant tumors is crucial for determining the appropriate treatment plan. Benign tumors may require minimal treatment or monitoring, while malignant tumors often require more intensive treatment.
+Prognosis: The prognosis for a patient with a benign tumor is generally favorable, whereas a malignant tumor may require aggressive treatment and has a more guarded prognosis depending on the stage and spread of the cancer.
+
+Understanding the distinction between benign and malignant tumors helps medical professionals to diagnose, treat, and manage breast cancer effectively. It also aids researchers and data scientists in developing models for predicting the nature of breast tumors based on various attributes in datasets like the BreastCancer dataset.
+
+## Detailed Variable Description
+### Cl.thickness (Clump Thickness)
+This variable measures the thickness of the clump of cells. cancerous cells tend to form thicker clumps due to their uncontrolled growth and abnormal division. A higher clump thickness often suggests malignancy.
+
+### Cell.size (Uniformity of Cell Size)
+This variable assesses the uniformity in size of the cells in the sample. Normal cells tend to be similar in size, whereas cancer cells often vary significantly in size. Higher variability (lack of uniformity) in cell size is typically indicative of malignancy.
+
+### Cell.shape (Uniformity of Cell Shape)
+This variable measures the uniformity in the shape of the cells. Similar to cell size, normal cells generally have a consistent shape. Cancer cells often exhibit irregular and varied shapes. Greater irregularity in cell shape is a common characteristic of malignant tumors.
+
+### Marg.adhesion (Marginal Adhesion)
+This variable evaluates how closely the cells are stuck to each other at the edges (margins). Cancerous cells often lose their ability to adhere to each other, leading to a lower marginal adhesion score. This can contribute to the cells’ ability to invade surrounding tissues.
+
+### Epith.c.size (Single Epithelial Cell Size)
+This variable measures the size of individual epithelial cells. Larger than normal epithelial cells can be indicative of malignancy. Cancerous cells often exhibit abnormal enlargement.
+
+### Bare.nuclei (Bare Nuclei)
+This variable counts the number of bare (naked) cell nuclei present in the sample. In a benign tumor, cells typically have their nuclei surrounded by cytoplasm. In malignant tumors, nuclei are often more exposed or "bare." A higher count of bare nuclei is usually associated with malignancy.
+
+### Bl.cromatin (Bland Chromatin)
+This variable assesses the texture and appearance of the chromatin (DNA material) in the cell nuclei. Bland chromatin refers to chromatin that looks normal and uniform. In malignant cells, chromatin often appears coarser and more irregular. Less "bland" chromatin may indicate a higher likelihood of cancer.
+
+### Normal.nucleoli (Normal Nucleoli)
+This variable measures the number and appearance of nucleoli within the cell nuclei. Normal nucleoli are typically small and uniform. In cancerous cells, nucleoli can become larger, more prominent, and irregular in number. More abnormal nucleoli are often a sign of malignancy.
+
+### Mitoses (Mitoses)
+This variable counts the number of cells undergoing mitosis (cell division). A higher rate of mitosis indicates rapid cell division, which is a hallmark of cancer. An increased number of mitotic figures in the sample suggests a higher likelihood of malignancy.
+
+These variables collectively help differentiate between benign and malignant breast tumors by capturing key characteristics of cell morphology and behavior. Malignant tumors tend to exhibit greater variability in cell size and shape, irregular chromatin texture, lower cell adhesion, higher mitotic rates, and abnormal nucleoli compared to benign tumors. By analyzing these features, medical professionals and data scientists can more accurately diagnose and predict the nature of breast tumors.
+
+### Checking the Missing Values
+```{r}
+missing_values <- sapply(BreastCancer, function(x) sum(is.na(x)))
+missing_values <- missing_values[missing_values > 0]
+missing_values
+```
+
+### Remove rows with missing values
+```{r}
+BreastCancer <- na.omit(BreastCancer)
+
+```
+
+### Remove the Id column as it is not a predictor
+```{r}
+BreastCancer$Id <- NULL
+
+```
+
+### Convert Class to a factor
+```{r}
+BreastCancer$Class <- as.factor(BreastCancer$Class)
+```
+
+### Now View the Data
+```{r}
+head(BreastCancer,20)
+```
+
+### Split the data into training and testing sets
+```{r}
+set.seed(123)
+trainIndex <- createDataPartition(BreastCancer$Class, p = 0.7, list = FALSE)
+trainData <- BreastCancer[trainIndex, ]
+testData <- BreastCancer[-trainIndex, ]
+```
+
+### View the Dimension of the Train and Test set
+```{r}
+dim(trainData)
+dim(testData)
+```
+
+### str(odata)
+```{r}
+attach(BreastCancer)
+summary(BreastCancer) ###Descriptive Statistics
+describe(BreastCancer)###Descriptive Statistics
+sum(is.na(BreastCancer))###Check for missing data
+```
+
+###Plot Target Variable
+```{r}
+plot(Class, names= c('benign', 'malignant'), col=c(3,2), ylim=c(0, 600), ylab='Respondent', xlab='Breast Cancer')
+box()
+```
+
+Now Let's train some machine learning models using package caret. The caret R package (Kuhn et al. 2021) (short for Classification And REgression Training) to carry out machine learning tasks in RStudio. The caret package offers a range of tools and models for classification and regression machine learning problems. In fact, it offers over 200 different machine learning models from which to choose.  Don’t worry, we don’t expect you to use them all!
+
+### VIEW THE MODELS IN CARET
+```{r}
+models= getModelInfo()
+names(models)
+```
+
+### Check for zero variance predictors:
+```{r}
+nzv <- nearZeroVar(BreastCancer[,-10], saveMetrics = TRUE)
+```
+
+
+The code above helps you clean your data by finding features that barely change across your observations. These features might not be informative for your analysis and can be removed to improve the efficiency of your models.
+
+```{r}
+print(nzv)
+```
+
+### Check if there is any column with missing values in the train set
+```{r}
+missing_values <- colSums(is.na(trainData))
+missing_values
+```
+
+### Prepare training scheme for cross-validation
+```{r}
+control <- trainControl(method="repeatedcv", number=10, repeats=5)
+```
+
+###TRAIN YOUR ML MODELS
+# Train a SVM model
+```{r}
+set.seed(123)
+tic()
+SvmModel <- train(Class~., data=trainData, method="svmRadial", trControl=control, na.action = na.omit)
+toc()
+SvmModel
+```
+
+The provided code snippet implements a Support Vector Machine (SVM) model for classification using the caret package in R. Here's a breakdown of the code:
+
+set.seed(123): This line sets a random seed for reproducibility. When training models with random components, setting a seed ensures that the same splits and random choices are made whenever the code is run, allowing for consistent results.
+
+tic(): This function (likely user-defined or from a specific package) is typically used to start measuring execution time. It's a placeholder to track how long the model training takes.
+
+SvmModel <- train(formula, data, method, trControl, na.action): This line is the core of the code where the SVM model is trained using the train function from the caret package. Here's a breakdown of the arguments:
+
+### Prediction using the test set
+```{r}
+Svmpred= predict(SvmModel,newdata = testData)
+SVM.cM<- confusionMatrix(Svmpred, testData$Class, positive = 'malignant', mode='everything')
+SVM.cM
+```
+
+### View the Predicted Case and the Ground Truth
+```{r}
+data.f <- data.frame(Svmpred, testData$Class)
+data.f
+```
+
+```{r}
+m1<- SVM.cM$byClass[c(1, 2, 5, 7, 11)]
+m1
+```
+
+### plotting confusion matrix
+```{r}
+SVM.cM$table
+fourfoldplot(SVM.cM$table, col=c(2,3), main="Imbalanced SVM Confusion Matrix")
+```
+
+### Feature Importance Plot
+```{r}
+var_imp <-varImp(SvmModel)
+var_imp$Variable <- rownames(var_imp)
+rownames(var_imp) <- NULL
+
+ggplot(var_imp, aes(x = reorder(Variable, Importance), y = importance)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  coord_flip() +
+  xlab("Variable") +
+  ylab("Importance") +
+  ggtitle("Feature Importance Plot for SVM Model")
+```
+
+## Train the decision Tree
+```{r}
+set.seed(123)
+tic()
+DTModel <- train(Class~., data=trainData, method="rpart", trControl=control)
+toc()
+DTModel
+```
+
+```{r}
+DTpred=predict(DTModel,newdata = testData)
+DT.cM<- confusionMatrix(DTpred,testData$Class, positive = 'malignant', mode='everything')
+DT.cM
+```
+
+### Prediction
+```{r}
+T2<- DT.cM$byClass[c(1, 2, 5, 7, 11)]
+T2
+```
+
+### plotting confusion matrix
+```{R}
+DT.cM$table
+fourfoldplot(DT.cM$table, col=rainbow(4), main="Imbalanced RF Confusion Matrix")
+```
+
+## CREATE ROC curve for your models-try for all models
+### Make predictions on the test set using type='prob'
+```{R}
+preddt <- predict(DTModel, newdata = testData, type = "prob")
+```
+
+### Create a prediction object needed by ROCR
+```{r}
+pred_rf <- prediction(preddt[, "malignant"], testData$Class)
+```
+
+### Calculate performance measures like ROC curve
+```{r}
+perf_rf <- performance(pred_rf, "tpr", "fpr")
+```
+
+## Plot the ROC curve
+### Calculate the ROC
+```{r}
+library(pROC)
+ROC <- roc(response =testData$Class,
+           predictor = predict(DTModel, newdata = testData, type = 'prob')$malignant)
+ROC
+```
+
+### Plot the ROC Curve using ggplot2
+```{r}
+roc_data <- data.frame(
+  FPR = 1 - ROC$specificities,  # False Positive Rate
+  TPR = ROC$sensitivities       # True Positive Rate
+)
+ggplot(roc_data, aes(x = FPR, y = TPR)) +
+  geom_line(color = "blue", size = 0.75) +  # ROC curve line
+  geom_abline(linetype = "dashed", color = "red") +  # Diagonal reference line
+  ggtitle("The ROC Curve and the Area Under the Curve for DT Model") +
+  xlab("False Positive Rate") +
+  ylab("True Positive Rate") +
+  annotate("text", x = 0.5, y = 0.5, label = paste("AUC =", round(auc(ROC), 4)), size = 5, fontface = "bold", color = "black")
+```
+
+## Train a Random Forest model
+```{r}
+set.seed(123)
+tic()
+RFModel <- train(Class~., data=trainData, method="rf", trControl=control)
+toc()
+RFModel
+```
+
+### View the Best Tune
+```{r}
+RFModel$results
+```
+
+In Random Forests and similar ensemble learning methods in machine learning, mtry refers to the number of variables randomly sampled at each split when constructing decision trees within the forest.
+
+Random Forest is an ensemble learning method that constructs multiple decision trees during training. Each tree is trained on a random subset of the data and features, which helps to reduce overfitting and improve generalization.
+
+At each node of a decision tree, the algorithm chooses the best split by evaluating a subset of variables (features). The mtry parameter controls how many features are considered at each split.
+
+mtry determines the number of variables randomly sampled from the full set of features at each split point in a decision tree. For example, if mtry = 2, then at each node of the tree, the algorithm randomly selects 2 features out of the total available features and determines the best split based on these 2 features.
+
+Small mtry: Leads to trees that are more correlated with each other but have lower variance. This might result in a more stable model but could potentially lead to overfitting.
+Large mtry: Reduces correlation between trees but increases variance. This may lead to a more robust model but could also increase computational cost.
+Tuning mtry:
+
+The mtry parameter is typically tuned during the model selection process. Common strategies include using the square root of the number of features (sqrt(p)) or a logarithm base 2 of the number of features (log2(p)), where p is the total number of features.
+Cross-validation or other validation techniques are often employed to find the optimal mtry value that balances model bias and variance for a particular dataset.
+
+In summary, mtry in Random Forests controls the randomness and diversity of individual trees in the ensemble, thereby influencing the overall performance and generalization ability of the model. Adjusting mtry is a key aspect of optimizing Random Forest models for various machine learning tasks.
+
+### Plot the Model
+```{r}
+plot(RFModel)
+```
+
+### Plot the Out of Bar Error
+```{r}
+F.MODEL <- RFModel$finalModel
+plot(F.MODEL, main = "A plot of Error and the Number of Trees")
+legend("topright", legend = c("Training Error", "Validation Error","OOB Error Rate"),
+       col = c("green", "black","red"), lty = 1, cex = 0.8)
+```
+
+The x-axis shows the number of trees in the model, and the y-axis shows the error. The three lines in the plot show the training error, validation error, and out-of-bag (OOB) error.
+
+### Training Error
+This is the error on the data that the model was trained on. As the number of trees increases, the training error typically decreases. This is because the model is becoming more complex and is able to fit the training data better. However, this can also lead to overfitting.
+
+### Validation Error
+This is the error on a separate dataset that the model was not trained on. The validation error is used to assess how well the model generalizes to unseen data.
+
+### Out-of-Bag (OOB) Error
+This is a type of validation error that is specific to random forest models. It is calculated by averaging the predictions of each tree for the data points that were not used to train that tree. The OOB error is a good estimate of how well the model will generalize to unseen data.
+
+The goal is to choose a number of trees that balances the training error and the validation or OOB error. If the training error is much lower than the validation or OOB error, it is a sign that the model is overfitting.
+
+### View the Final Model
+```{r}
+RFModel$finalModel
+```
+
+The term "out of bag (OOB) error" is associated with ensemble learning methods, particularly Random Forests. When constructing a Random Forest, the algorithm generates multiple decision trees by bootstrapping the training data. Bootstrapping involves randomly sampling the training dataset with replacement, resulting in each tree being trained on a slightly different subset of the data. Consequently, some instances from the training set are not included in the bootstrap sample for a given tree. These excluded instances are known as "out of bag" (OOB) samples.
+
+The OOB error is calculated by using these OOB samples to evaluate the performance of the Random Forest. For each tree in the forest, its OOB samples are passed through the tree to obtain predictions. By aggregating these predictions across all trees, the Random Forest can make a combined prediction for each instance. The OOB error rate is then determined by comparing these aggregated predictions to the true labels of the OOB samples. This method of error estimation is advantageous because it provides an unbiased estimate of the model's generalization error without requiring a separate validation set. This is particularly useful when dealing with limited data, as it maximizes the amount of data available for training while still providing a robust measure of model performance.
+
+This results above indicates that the Random Forest model is used for a classification task, where the goal is to predict categorical outcomes (benign or malignant).
+
+The Random Forest model consists of 500 decision trees. Using a large number of trees generally improves the model’s robustness and accuracy by reducing variance. At each split in a tree, the algorithm randomly selects 2 variables (features) out of all the available features to find the best split. This randomness helps in making the trees less correlated and improves the overall performance of the Random Forest.
+
+OOB estimate of error rate is found to be 3.55%. The OOB error rate is the proportion of misclassified instances when the OOB samples are used to test the Random Forest model. An error rate of 3.55% means that approximately 3.55% of the OOB samples were incorrectly classified by the model. This is a low error rate, indicating good model performance.
+
+The confusion matrix provides a detailed breakdown of the model’s performance in terms of correctly and incorrectly classified instances:
+
+For the Benign cases, 300 instances were correctly classified as benign. 11 instances were incorrectly classified as malignant. Class error for benign: 11/(300+11) ≈ 3.54%
+
+For the malignant instances, 162 instances were correctly classified as malignant. 6 instances were incorrectly classified as benign. Class error for malignant: 6/(162+6) ≈ 3.57%
+
+The class error for both benign and malignant classes is low (around 3.5%), indicating that the model is quite accurate in distinguishing between the two classes. The overall performance, reflected by the low OOB error rate and the confusion matrix, suggests that the Random Forest model is effective in classifying the instances in this dataset.
+
+### Prediction
+```{r}
+RFpred=predict(RFModel,newdata = testData)
+RF.cM<- confusionMatrix(RFpred,testData$Class, positive = 'malignant', mode='everything')
+RF.cM
+```
+
+```{R}
+m2<- RF.cM$byClass[c(1, 2, 5, 7, 11)]
+m2
+```
+
+### plotting confusion matrix
+```{R}
+RF.cM$table
+fourfoldplot(RF.cM$table, col=rainbow(4), main="Imbalanced RF Confusion Matrix")
+```
+
+```{r}
+VRI <- varImp(RFModel)
+VRI
+```
+
+### Feature Importance Plot
+```{r}
+var_imp <-varImp(RFModel)
+var_imp$Variable <- rownames(var_imp)
+rownames(var_imp) <- NULL
+
+ggplot(var_imp, aes(x = reorder(Variable, Importance), y = importance)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  coord_flip() +
+  xlab("Variable") +
+  ylab("Importance") +
+  ggtitle("Feature Importance Plot for Random Forest Model")
+```
+## CREATE ROC curve for your models-try for all models
+### Make predictions on the test set using type='prob'
+```{R}
+predrf <- predict(RFModel, newdata = testData, type = "prob")
+```
+
+### Create a prediction object needed by ROCR
+```{r}
+pred_rf <- prediction(predrf[, "malignant"], testData$Class)
+```
+
+### Calculate performance measures like ROC curve
+```{r}
+perf_rf <- performance(pred_rf, "tpr", "fpr")
+```
+
+### Plot the ROC curve
+```{r}
+plot(perf_rf, colorize = TRUE, main = "ROC Curve-Random Forest")
+auc_value <- performance(pred_rf, "auc")@y.values[[1]] ### Add AUC value as text on the plot
+auc_label <- paste("AUC =", round(auc_value, 2))
+text(0.5, 0.3, auc_label, col = "blue", cex = 1.5)  # Adjust position
+```
+
+
+### Train an Logisitic Regression model
+```{r}
+set.seed(123)
+lrModel <- train(Class~., 
+                 data=trainData, 
+                 method="glm", 
+                 trControl=control)
+lrModel
+```
+
+### Prediction
+```{r}
+lrpred=predict(lrModel,newdata = testData)
+lr.cM<- confusionMatrix(lrpred,testData$Class, positive = 'malignant', mode='everything')
+lr.cM
+```
+
+```{r}
+m3<- lr.cM$byClass[c(1, 2, 5, 7, 11)]
+m3
+```
+
+### plotting confusion matrix
+```{r}
+lr.cM$table
+fourfoldplot(lr.cM$table, col=rainbow(4), main="Imbalanced LR Confusion Matrix")
+plot(varImp(lrModel, scale=T))
+```
+
+### Feature Importance Plot
+```{r}
+var_imp <-varImp(lrModel)
+var_imp$Variable <- rownames(var_imp)
+rownames(var_imp) <- NULL
+
+ggplot(var_imp, aes(x = reorder(Variable, Importance), y = importance)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  coord_flip() +
+  xlab("Variable") +
+  ylab("Importance") +
+  ggtitle("Feature Importance Plot for LR Model")
+```
+### Make predictions on the test set using type='prob'
+```{r}
+predlr <- predict(lrModel, newdata = testData, type = "prob")
+predlr
+```
+### Load the ROCR package
+```{r}
+library(ROCR)
+```
+
+### Create a prediction object needed by ROCR
+```{r}
+pred_lr <- prediction(predlr[, "malignant"], testData$Class)
+```
+
+### Calculate performance measures like ROC curve
+```{r}
+perf_lr <- performance(pred_lr, "tpr", "fpr")
+```
+
+### Plot the ROC curve
+```{r}
+plot(perf_lr, colorize = TRUE, main = "ROC Curve-Logistic Regression")
+auc_value <- performance(pred_lr, "auc")@y.values[[1]]
+auc_label <- paste("AUC =", round(auc_value, 2))
+text(0.5, 0.3, auc_label, col = "blue", cex = 1.5) # Add AUC value as text on the plot
+```
+
+### Train a k- Nearest Neigbour model
+```{r}
+set.seed(123)
+knnModel <- train(Class~., 
+                  data=trainData, 
+                  method="knn", 
+                  trControl=control)
+knnModel
+```
+
+### View the Nearest Neighbors
+```{r}
+knnModel$finalModel
+```
+
+```{r}
+plot(knnModel)
+```
+
+### Prediction
+```{r}
+knnpred=predict(knnModel,newdata = testData)
+knn.cM<- confusionMatrix(knnpred,testData$Class, positive = 'malignant', mode='everything')
+knn.cM
+m4<- knn.cM$byClass[c(1, 2, 5, 7, 11)]
+m4
+```
+
+### plotting confusion matrix
+```{r}
+knn.cM$table
+fourfoldplot(knn.cM$table, col=rainbow(4), main="Imbalanced KNN Confusion Matrix")
+```
+
+### Feature Importance Plot
+```{r}
+var_imp <-varImp(knnModel)
+var_imp$Variable <- rownames(var_imp)
+rownames(var_imp) <- NULL
+
+ggplot(var_imp, aes(x = reorder(Variable, Importance), y = importance)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  coord_flip() +
+  xlab("Variable") +
+  ylab("Importance") +
+  ggtitle("Feature Importance Plot for KNN Model")
+```
+
+### Train a Neural Net model
+```{r}
+set.seed(123)
+nnModel <- train(Class~., 
+                 data=trainData, 
+                 method="nnet", 
+                 trControl=control)
+nnModel
+```
+
+### Neural Network Model
+```{r}
+nnModel$finalModel
+```
+
+### Plot the Neural Network Model
+```{r}
+plot(nnModel)
+```
+
+### Plot the Neural Network Model
+```{r}
+library(NeuralNetTools)
+plotnet(nnModel$finalModel)
+```
+
+
+The image above depicts a neural network visualization generated using the NeuralNetTools package in R. This network is a simple feed forward neural network with an input layer, a hidden layer, and an output layer. Below is an explanation of the various components of this neural network:
+
+The neural network uses the input features to predict the output through weighted connections and biases. The hidden layer allows the model to capture complex relationships between the input features. The visualization helps in understanding the network structure and the importance of different features in the prediction process.
+
+```{r}
+nnpred=predict(nnModel,newdata = testData)
+nn.cM<- confusionMatrix(nnpred,testData$Class, positive = 'malignant', mode='everything')
+nn.cM
+m5<- nn.cM$byClass[c(1, 2, 5, 7, 11)]
+m5
+```
+### plotting confusion matrix
+```{r}
+nn.cM$table
+fourfoldplot(nn.cM$table, col=rainbow(4), main="Imbalanced NN Confusion Matrix")
+```
+
+### Feature Importance Plot
+```{r}
+var_imp <-varImp(nnModel)
+var_imp$Variable <- rownames(var_imp)
+rownames(var_imp) <- NULL
+
+ggplot(var_imp, aes(x = reorder(Variable, Importance), y = importance)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  coord_flip() +
+  xlab("Variable") +
+  ylab("Importance") +
+  ggtitle("Feature Importance Plot for Neural Network Model")
+```
+
+# Train a Naive Bayes model
+```{r}
+set.seed(123)
+nbModel <- train(Class~., data=trainData, method="naive_bayes", trControl=control)
+nbModel
+```
+
+### Prediction
+```{r}
+nbpred=predict(nbModel,newdata = testData)
+nb.cM<- confusionMatrix(nbpred,testData$Class, positive = 'malignant', mode='everything')
+nb.cM
+m6<- nb.cM$byClass[c(1, 2, 5, 7, 11)]
+m6
+```
+
+### plotting confusion matrix
+```{r}
+nb.cM$table
+fourfoldplot(nb.cM$table, col=rainbow(4), main="Imbalanced NB Confusion Matrix")
+```
+
+### Feature Importance Plot
+```{r}
+var_imp <-varImp(nbModel)
+var_imp$Variable <- rownames(var_imp)
+rownames(var_imp) <- NULL
+
+ggplot(var_imp, aes(x = reorder(Variable, Importance), y = importance)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  coord_flip() +
+  xlab("Variable") +
+  ylab("Importance") +
+  ggtitle("Feature Importance Plot for Naive Bayes Model")
+```
+
+### Train a Linear Discriminant Analysis model
+```{r}
+set.seed(123)
+ldaModel <- train(Class~., data=trainData, method="lda", trControl=control)
+ldaModel
+ldapred=predict(ldaModel,newdata = testData)
+lda.cM<- confusionMatrix(ldapred,testData$Class, positive = 'malignant', mode='everything')
+m7<- lda.cM$byClass[c(1, 2, 5, 7, 11)]
+m7
+```
+
+### plotting confusion matrix
+```{r}
+lda.cM$table
+fourfoldplot(lda.cM$table, col=rainbow(4), main="Imbalanced LDA Confusion Matrix")
+```
+
+### Feature Importance Plot
+```{r}
+var_imp <-varImp(ldaModel)
+var_imp$Variable <- rownames(var_imp)
+rownames(var_imp) <- NULL
+
+ggplot(var_imp, aes(x = reorder(Variable, Importance), y = importance)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  coord_flip() +
+  xlab("Variable") +
+  ylab("Importance") +
+  ggtitle("Feature Importance Plot for LDA Model")
+```
+
+### Train a Linear Vector Quantization model
+```{r}
+set.seed(123)
+lvqModel <- train(Class~., data=trainData, method="lvq", trControl=control)
+lvqModel
+lvqpred=predict(lvqModel,newdata = testData)
+lvq.cM<- confusionMatrix(lvqpred,testData$Class, positive = 'malignant', mode='everything')
+LVQ<- lvq.cM$byClass[c(1, 2, 5, 7, 11)]
+LVQ
+```
+
+### plotting confusion matrix
+```{r}
+lvq.cM$table
+fourfoldplot(lvq.cM$table, col=rainbow(4), main="Imbalanced LDA Confusion Matrix")
+```
+
+### Feature Importance Plot
+```{r}
+var_imp <-varImp(lvqModel)
+var_imp$Variable <- rownames(var_imp)
+rownames(var_imp) <- NULL
+
+ggplot(var_imp, aes(x = reorder(Variable, Importance), y = importance)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  coord_flip() +
+  xlab("Variable") +
+  ylab("Importance") +
+  ggtitle("Feature Importance Plot for LDQ Model")
+```
+
+### Train a Bagging model
+```{r}
+set.seed(123)
+bagModel <- train(Class~., data=trainData, method="treebag", trControl=control)
+bagModel
+bagpred=predict(bagModel,newdata = testData)
+bag.cM<- confusionMatrix(bagpred,testData$Class, positive = 'malignant', mode='everything')
+m8<- bag.cM$byClass[c(1, 2, 5, 7, 11)]
+m8
+```
+
+### plotting confusion matrix
+```{r}
+bag.cM$table
+fourfoldplot(bag.cM$table, col=rainbow(4), main="Imbalanced Bagging Confusion Matrix")
+plot(varImp(bagModel, scale=T))
+```
+
+### Train a Boosting model
+```{r}
+set.seed(123)
+boModel <- train(Class~., data=trainData, method="xgbTree", trControl=control)
+boModel
+bopred=predict(boModel,newdata = testData)
+bo.cM<- confusionMatrix(bopred,testData$Class, positive = 'malignant', mode='everything')
+m9<- bo.cM$byClass[c(1, 2, 5, 7, 11)]
+m9
+```
+
+```{r}
+boModel
+```
+
+```{r}
+bo.cM
+```
+
+### plotting confusion matrix
+```{r}
+bo.cM$table
+fourfoldplot(bo.cM$table, col=rainbow(4), main="Imbalanced Boosting Confusion Matrix")
+```
+
+### Feature Importance Plot
+```{r, fig.height=4, fig.width=8}
+var_imp <-varImp(boModel)
+var_imp$Variable <- rownames(var_imp)
+rownames(var_imp) <- NULL
+
+ggplot(var_imp, aes(x = reorder(Variable, Importance), y = Importance)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  geom_text(aes(label = round(Importance, 2)), hjust = -0.2, size = 3) +
+  coord_flip() +
+  xlab("Variable") +
+  ylab("Importance") +
+  ggtitle("Feature Importance Plot for Boosting Model") +
+  theme_minimal()
+```
+
+## TABULATE YOUR RESULTS
+
+```{r}
+measure <-round(data.frame(SVM= m1, DT = T2, RF= m2, LR = m3, KNN=m4, NN=m5, NB=m6, LDA = m7, LVQ = LVQ, Bagging = m8, Boosting = m9), 3)
+dim(measure)
+rownames(measure)=c('Sensitivity', 'Specificity', 'Precision','F1-Score', 'Balanced Accuracy')
+flextable(measure)
+#View(measure)
+knitr::kable(measure, digits = 3, format = "markdown")
+```
+
+When evaluating the performance of different classification models, we consider several metrics, including Sensitivity (recall), Specificity, Precision, F1-Score, and Balanced Accuracy. Each metric provides insights into different aspects of the models' performance. For example, Sensitivity measures the proportion of actual positives correctly identified, while Specificity measures the proportion of actual negatives correctly identified. Precision indicates the accuracy of positive predictions, the F1-Score is the harmonic mean of Precision and Sensitivity, and Balanced Accuracy is the average of Sensitivity and Specificity.
+
+Based on the provided data, the Support Vector Machine (SVM) demonstrates the highest Sensitivity (1.000), meaning it correctly identifies all positive instances, which is crucial in medical diagnoses where missing a positive case can have severe consequences. However, its Specificity (0.947) is slightly lower than other models, indicating a higher rate of false positives compared to models like K-Nearest Neighbors (KNN) and Linear Discriminant Analysis (LDA), which both have a Specificity of 0.992. Despite this, SVM maintains a high Precision (0.910) and F1-Score (0.953), suggesting that while it identifies all positive cases, it also makes some errors in predicting negatives as positives.
+
+Considering Balanced Accuracy, which equally weighs Sensitivity and Specificity, the Logistic Regression (LR) model performs less favorably with a score of 0.904, indicating it is less balanced compared to others. On the other hand, models like LDA and Linear Vector Quantization (LVQ) show superior Balanced Accuracy (0.968), implying a well-balanced performance in identifying both positives and negatives correctly. Additionally, Random Forest (RF) and Boosting models exhibit robust performance across most metrics, with high Sensitivity (0.944) and F1-Scores (0.944 for RF and 0.950 for Boosting), making them reliable choices for balanced and accurate predictions. These insights suggest that while SVM excels in identifying positives, models like LDA and LVQ offer more balanced overall performance, which might be more desirable in scenarios where both false positives and false negatives have significant implications.
+
+### collect all resamples and compare
+```{r}
+results <- resamples(list(SVM=SvmModel, Decision.Tree = DTModel, Bagging=bagModel,LR=lrModel,NB=nbModel, RF=RFModel))
+```
+
+### summarize the distributions of the results 
+```{r}
+summary(results)
+```
+
+### boxplots of results
+```{r}
+bwplot(results)
+```
+
+### dot plots of results
+```{r}
+dotplot(results)
+```
+
+### Oversampling 
+# Oversampled data --------------------------------------------------------
+```{r}
+ over <- ovun.sample(Class~., data = trainData, method = "over")$data
+ head(over,5)
+```
+
+The purpose of oversampling is to address class imbalance in a dataset by increasing the number of instances in the minority class, thereby creating a more balanced class distribution. This technique is particularly important in scenarios such as medical diagnostics, where the minority class (e.g., malignant cases) may be underrepresented. By augmenting the minority class, oversampling ensures that the model receives sufficient examples of both classes during training, which can improve the model's ability to accurately predict minority class instances, reduce bias towards the majority class, and enhance overall performance metrics like sensitivity, precision, and F1-Score.
+
+## Model building ----------------------------------------------------------
+### prepare training scheme for cross-validation
+```{r} 
+control <- trainControl(method="repeatedcv", number=10, repeats=5)
+```
+ 
+## train an SVM model
+```{r}
+ set.seed(123)
+ over.svmModel <- train(Class~., data=over, method="svmRadial", trControl=control)
+ over.svmModel
+ over.svmpred=predict(over.svmModel,newdata = testData)
+ over.SVM.cM<- confusionMatrix(over.svmpred,testData$Class, positive = 'malignant', mode='everything')
+ over.SVM.cM
+ over.m1<- over.SVM.cM$byClass[c(1, 2, 5, 7, 11)]
+ over.m1
+```
+
+The oversampled SVM model demonstrates improved performance in specificity, precision, and F1-Score compared to the original SVM model. Specifically, the oversampled model has a specificity of 0.9699 and precision of 0.9452, both significant improvements over the original SVM's 0.947 and 0.910, respectively. These improvements are critical in medical diagnoses to reduce false positives, which can lead to unnecessary anxiety and further testing for patients. Although the sensitivity of the oversampled SVM decreased slightly to 0.9718 from the original 1.000, this reduction is marginal and is outweighed by the overall better balance between precision and recall, reflected in the higher F1-Score of 0.9583 compared to the original's 0.953. The balanced accuracy of the oversampled model is also very high at 0.9709, showing only a slight decrease from the original model's 0.974.
+
+When compared to other models, the oversampled SVM model's performance remains competitive. For instance, its balanced accuracy and F1-Score are on par with models like Random Forest, Boosting, and LDA, which also exhibit strong performance metrics. The highest balanced accuracy from the original models was 0.974 (SVM), and the highest F1-Score was 0.964 (LDA and LVQ), with the oversampled SVM's balanced accuracy at 0.9709 and F1-Score at 0.9583 being very close. This indicates that the oversampling strategy has enhanced the SVM model's robustness and reliability, making it a strong contender among the various models evaluated. Overall, the oversampled SVM model offers a more balanced performance, particularly in reducing false positives while maintaining high accuracy, making it an effective choice for medical diagnostics in breast cancer prediction.
+
+###plotting confusion matrix
+```{r, fig.height=5, fig.width=7}
+ over.SVM.cM$table
+ fourfoldplot(over.SVM.cM$table, col=rainbow(4), main="Oversampled SVM Confusion Matrix")
+```
+ 
+ 
+ 
+
+
+
+
+

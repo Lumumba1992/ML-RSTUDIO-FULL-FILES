@@ -1,0 +1,224 @@
+---
+title: "BENCHMARKING MACHINE LEARNING MODELS"
+author: "Lumumba Wandera Victor"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = NA, message = FALSE, warning = FALSE,
+                      fig.height = 5, fig.width = 7)
+```
+
+## MODELBENCHMARKING
+Model benchmarking is a critical process in machine learning that involves evaluating and comparing the performance of different models to determine which one best suits a specific task. This process typically involves using a variety of performance metrics such as accuracy, precision, recall, F1-score, and area under the ROC curve (AUC). These metrics provide a comprehensive view of how well a model performs not only in terms of overall accuracy but also in its ability to correctly identify positive and negative instances. Benchmarking ensures that the chosen model is not only accurate but also robust and reliable across different subsets of data, which is essential for making informed decisions in practical applications.
+
+A systematic approach to benchmarking starts with selecting appropriate datasets that reflect the real-world scenarios where the model will be deployed. The use of standard benchmark datasets, like those provided by the mlbench package in R, allows for consistent and fair comparisons. Once the datasets are chosen, they are typically split into training and testing sets to evaluate how well the models generalize to unseen data. Cross-validation techniques, such as k-fold cross-validation, are often employed to ensure that the performance metrics are not biased by a particular train-test split. This method provides a more reliable estimate of the model's performance by averaging the results across multiple splits.
+
+During the benchmarking process, it is crucial to consider both computational efficiency and predictive performance. Some models, like Random Forests and XGBoost, might offer superior predictive power but at the cost of higher computational resources and longer training times. On the other hand, simpler models like Logistic Regression might train faster and be easier to interpret, even if they are less accurate. Therefore, the choice of model often involves a trade-off between accuracy, interpretability, and computational efficiency. Additionally, it is important to analyze the results using statistical tests to determine if the differences in performance metrics are statistically significant. This comprehensive evaluation helps in selecting the most suitable model for the given problem, ensuring that the final model delivers reliable and efficient performance in real-world applications.
+
+### Load the following libraries
+#### Or Simply run the following codes to install all packages at once.
+```{r}
+list.of.packages <- c("psych", "ggplot2", "caretEnsemble", "tidyverse", "mlbench", "caret", "flextable", "mltools", "tictoc", "ROSE", "kernlab", "smotefamily", "klaR", "ada")
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)) install.packages(new.packages)
+```
+
+
+##Load libraries
+```{r}
+library(caret) #for machine learning models
+library(psych) ##for description of  data
+library(ggplot2) ##for data visualization
+library(caretEnsemble)##enables the creation of ensemble models
+library(tidyverse) ##for data manipulation
+library(mlbench)  ## for benchmarking ML Models
+library(flextable) ## to create and style tables
+library(mltools) #for hyperparameter tuning
+library(tictoc) #for determining the time taken for a model to run
+library(ROSE)  ## for random oversampling
+library(smotefamily) ## for smote sampling
+library(ROCR) ##For ROC curve
+library(e1071)
+library(randomForest)
+library(xgboost)
+```
+
+### Load data set
+```{r}
+data(Sonar)
+head(Sonar,5)
+```
+
+### Read About Sonar Data
+```{r}
+?Sonar
+```
+
+### Description
+This is the data set used by Gorman and Sejnowski in their study of the classification of sonar signals using a neural network [1]. The task is to train a network to discriminate between sonar signals bounced off a metal cylinder and those bounced off a roughly cylindrical rock.
+
+Each pattern is a set of 60 numbers in the range 0.0 to 1.0. Each number represents the energy within a particular frequency band, integrated over a certain period of time. The integration aperture for higher frequencies occur later in time, since these frequencies are transmitted later during the chirp.
+
+The label associated with each record contains the letter "R" if the object is a rock and "M" if it is a mine (metal cylinder). The numbers in the labels are in increasing order of aspect angle, but they do not encode the angle directly.
+
+### Format
+A data frame with 208 observations on 61 variables, all numerical and one (the Class) nominal.
+
+### Source
+Contribution: Terry Sejnowski, Salk Institute and University of California, San Deigo.
+
+Development: R. Paul Gorman, Allied-Signal Aerospace Technology Center.
+
+Maintainer: Scott E. Fahlman
+
+These data have been taken from the UCI Repository Of Machine Learning Databases (Blake & Merz 1998) and were converted to R format by Evgenia Dimitriadou in the late 1990s.
+
+The current version of the UC Irvine Machine Learning Repository Connectionist Bench Sonar, Mines vs. Rocks data set is available from doi:10.24432/C5T01Q.
+
+### Prepare Data for Machine Learning
+```{r}
+set.seed(123) # For reproducibility
+trainIndex <- createDataPartition(Sonar$Class, p = 0.8, 
+                                  list = FALSE, 
+                                  times = 1)
+trainData <- Sonar[trainIndex,]
+testData <- Sonar[-trainIndex,]
+```
+
+### Define Control Function for Training
+```{r}
+control <- trainControl(method = "cv", repeats = 5, number = 10)
+```
+
+### Train Different Models
+```{r}
+# Logistic Regression
+model_logistic <- train(Class ~ ., data = trainData, 
+                        method = "glm", 
+                        trControl = control, family = binomial())
+
+# Support Vector Machine
+model_svm <- train(Class ~ ., data = trainData, 
+                   method = "svmRadial", 
+                   trControl = control)
+
+# Random Forest
+model_rf <- train(Class ~ ., data = trainData, 
+                  method = "rf", 
+                  trControl = control)
+
+# Extreme Gradient Boosting
+model_xgb <- train(Class ~ ., data = trainData, 
+                   method = "xgbTree", 
+                   trControl = control)
+```
+
+### Summaries of the Model
+```{r}
+summary(model_logistic)
+```
+
+### Compare Model Performance:
+Use resamples to compare the performance of the trained models.
+```{r}
+results <- resamples(list(logistic = model_logistic, 
+                          svm = model_svm, 
+                          rf = model_rf, 
+                          xgb = model_xgb))
+
+summary(results)
+```
+
+### Visualize the Results:
+Plot the comparison of model performances.
+```{r}
+bwplot(results)
+```
+
+```{r}
+bwplot(results, layout =c(1,2), scale = "free", as.table=TRUE)
+```
+
+### Evaluate Models on Test Data:
+Make predictions on the test data and evaluate performance metrics like accuracy, confusion matrix, etc.
+
+### Predict and evaluate Logistic Regression
+```{r}
+pred_logistic <- predict(model_logistic, newdata = testData)
+lr.cM<-confusionMatrix(pred_logistic, testData$Class)
+lr.cM
+```
+
+```{r}
+M1<- lr.cM$byClass[c(1, 2, 5, 7, 11)]
+M1
+```
+
+
+### Predict and evaluate SVM
+```{r}
+pred_svm <- predict(model_svm, newdata = testData)
+SVM.cM<-confusionMatrix(pred_svm, testData$Class)
+SVM.cM
+```
+
+```{r}
+M2<- SVM.cM$byClass[c(1, 2, 5, 7, 11)]
+M2
+```
+
+### Predict and evaluate Random Forest
+```{r}
+pred_rf <- predict(model_rf, newdata = testData)
+RF.cM<-confusionMatrix(pred_rf, testData$Class)
+RF.cM
+```
+
+```{r}
+M3<- RF.cM$byClass[c(1, 2, 5, 7, 11)]
+M3
+```
+
+### Predict and evaluate XGBoost
+```{r}
+pred_xgb <- predict(model_xgb, newdata = testData)
+xgb.cM <-confusionMatrix(pred_xgb, testData$Class)
+xgb.cM
+```
+
+```{r}
+M4<- xgb.cM$byClass[c(1, 2, 5, 7, 11)]
+M4
+```
+
+### Tabulate the Results
+```{r}
+measure <-round(data.frame(LRM = M1, SVM= M2, RF= M3, XGBoost = M4), 3)
+dim(measure)
+rownames(measure)=c('Sensitivity', 'Specificity', 'Precision','F1-Score', 'Balanced Accuracy')
+flextable(measure)
+measure
+View(measure)
+```
+
+When evaluating the performance of machine learning models, sensitivity (recall), specificity, precision, F1-score, and balanced accuracy are crucial metrics. Sensitivity, or recall, measures the ability of the model to correctly identify positive instances. Among the models, the Random Forest (RF) exhibits the highest sensitivity at 0.955, indicating that it is the most effective at identifying positive cases. In contrast, Logistic Regression (LRM) shows the lowest sensitivity at 0.682, implying it misses a significant number of positive instances. Support Vector Machine (SVM) and XGBoost also perform well in terms of sensitivity, with scores of 0.818 and 0.864 respectively, suggesting they are reliable at detecting positives but not as robust as RF.
+
+Specificity measures the ability of the model to correctly identify negative instances. Here, SVM and XGBoost both achieve a high specificity of 0.947, only slightly lower than SVM’s 0.895. LRM, while still respectable at 0.789, does not perform as well in distinguishing negative cases compared to the other models. Precision, which assesses the proportion of true positive predictions among all positive predictions, shows that XGBoost has the highest precision at 0.950, indicating that it makes very few false positive errors. RF also achieves a perfect precision of 0.955, showing a strong performance in precision as well. SVM follows closely with 0.900, and LRM trails with 0.789, indicating more false positives than the other models.
+
+The F1-score, which combines precision and recall into a single metric, shows that RF leads with a perfect score of 0.955. This is followed by XGBoost with 0.905 and SVM with 0.857, indicating that these models strike a good balance between precision and recall. LRM again shows the weakest performance with an F1-score of 0.732. Balanced accuracy, the average of sensitivity and specificity, further supports these findings, with RF at 0.951 and XGBoost at 0.906, demonstrating their superior overall performance. SVM at 0.856 also performs well, whereas LRM at 0.736 lags behind. Overall, RF emerges as the best-performing model, with XGBoost close behind, both demonstrating high reliability in correctly identifying both
+
+When evaluating the performance of machine learning models, sensitivity (recall), specificity, precision, F1-score, and balanced accuracy are crucial metrics. Sensitivity, or recall, measures the ability of the model to correctly identify positive instances. Among the models, the Random Forest (RF) exhibits the highest sensitivity at 0.955, indicating that it is the most effective at identifying positive cases. In contrast, Logistic Regression (LRM) shows the lowest sensitivity at 0.682, implying it misses a significant number of positive instances. Support Vector Machine (SVM) and XGBoost also perform well in terms of sensitivity, with scores of 0.818 and 0.864 respectively, suggesting they are reliable at detecting positives but not as robust as RF.
+
+Specificity measures the ability of the model to correctly identify negative instances. Here, SVM and XGBoost both achieve a high specificity of 0.947, which is only slightly lower than RF’s 0.895. LRM, while still respectable at 0.789, does not perform as well in distinguishing negative cases compared to the other models. Precision, which assesses the proportion of true positive predictions among all positive predictions, shows that XGBoost has the highest precision at 0.950, indicating that it makes very few false positive errors. RF also achieves a high precision of 0.955, showing a strong performance in precision as well. SVM follows closely with 0.900, and LRM trails with 0.789, indicating more false positives than the other models.
+
+The F1-score, which combines precision and recall into a single metric, shows that RF leads with a perfect score of 0.955. This is followed by XGBoost with 0.905 and SVM with 0.857, indicating that these models strike a good balance between precision and recall. LRM again shows the weakest performance with an F1-score of 0.732. Balanced accuracy, the average of sensitivity and specificity, further supports these findings, with RF at 0.951 and XGBoost at 0.906, demonstrating their superior overall performance. SVM at 0.856 also performs well, whereas LRM at 0.736 lags behind. Overall, RF emerges as the best-performing model, with XGBoost close behind, both demonstrating high reliability in correctly identifying both positive and negative instances.
+
+
+
+
+
+
+
+

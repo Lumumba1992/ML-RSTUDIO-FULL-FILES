@@ -1,0 +1,101 @@
+---
+title: "Malaria Infection Cases Simulation"
+author: "Lumumba Wandera Victor"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Simulate Malaria Data
+```{r}
+# Load necessary libraries
+library(dplyr)
+library(tibble)
+library(MASS)
+
+# Set the seed for reproducibility
+set.seed(123)
+
+# Number of observations
+n <- 500
+
+# Simulate continuous independent variables
+continuous_vars <- tibble(
+  age = rnorm(n, mean = 35, sd = 12),
+  income = rnorm(n, mean = 30000, sd = 15000),
+  temperature = rnorm(n, mean = 25, sd = 5),
+  rainfall = rnorm(n, mean = 100, sd = 50),
+  mosquito_density = rnorm(n, mean = 20, sd = 10),
+  distance_to_health_facility = rnorm(n, mean = 10, sd = 5),
+  bed_net_usage = rnorm(n, mean = 50, sd = 20),
+  education_years = rnorm(n, mean = 10, sd = 4),
+  household_size = rnorm(n, mean = 5, sd = 2),
+  urbanization_rate = rnorm(n, mean = 70, sd = 15)
+)
+
+# Simulate categorical independent variables
+categorical_vars <- tibble(
+  gender = sample(c("male", "female"), n, replace = TRUE),
+  occupation = sample(c("farmer", "teacher", "merchant", "unemployed"), n, replace = TRUE),
+  housing_quality = sample(c("poor", "average", "good"), n, replace = TRUE),
+  access_to_clean_water = sample(c("yes", "no"), n, replace = TRUE),
+  sanitation_facilities = sample(c("poor", "average", "good"), n, replace = TRUE),
+  region = sample(c("north", "south", "east", "west"), n, replace = TRUE),
+  vaccination_status = sample(c("yes", "no"), n, replace = TRUE),
+  insecticide_treated_nets = sample(c("yes", "no"), n, replace = TRUE),
+  malaria_history = sample(c("yes", "no"), n, replace = TRUE),
+  health_insurance = sample(c("yes", "no"), n, replace = TRUE)
+)
+
+# Combine continuous and categorical variables
+independent_vars <- bind_cols(continuous_vars, categorical_vars)
+
+# Generate the outcome variable
+# Create a model matrix for the categorical variables
+cat_model_matrix <- model.matrix(~ gender + occupation + housing_quality + access_to_clean_water +
+                                   sanitation_facilities + region + vaccination_status +
+                                   insecticide_treated_nets + malaria_history + health_insurance, 
+                                 data = categorical_vars)[, -1]
+
+# Combine continuous variables and the model matrix for categorical variables
+combined_vars <- cbind(as.matrix(continuous_vars), cat_model_matrix)
+
+# Create random coefficients for the variables
+beta <- rnorm(ncol(combined_vars))
+
+intercept <- 10000  # Adjust this value to increase/decrease infection rate
+
+# Calculate the linear predictor
+linear_predictor <- combined_vars %*% beta + intercept
+
+# Generate probabilities using the logistic function
+prob <- 1 / (1 + exp(-linear_predictor))
+
+# Generate the binary outcome variable
+outcome <- rbinom(n, 1, prob)
+
+# Combine the outcome variable with the independent variables
+malaria_data <- bind_cols(
+  tibble(infected = outcome),
+  independent_vars
+)
+
+# Display the first few rows of the dataset
+print(head(malaria_data))
+```
+
+This sequence of steps simulates the outcome variable (infected) for a dataset by first creating a set of predictors, assigning random coefficients to them, and then combining these predictors into a linear predictor. The logistic function converts this linear predictor into probabilities, which are then used to generate binary outcomes through a Bernoulli process. By setting a high intercept value, we ensure that the base probability of infection is high, resulting in more infected cases in the dataset. Adjusting the intercept value allows us to control the prevalence of the outcome.
+
+
+
+
+
+
+
+
+
+
+

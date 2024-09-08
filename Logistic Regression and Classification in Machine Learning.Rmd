@@ -1,0 +1,1347 @@
+---
+title: "Heart Disease Data"
+author: "Lumumba Wandera Victor"
+date: "2023-07-04"
+output:
+  word_document: default
+  pdf_document: default
+  html_document: default
+---
+### Set up Rstudio
+Setting up RMarkdown when opening it enables you to create dynamic, reproducible, and visually appealing reports, presentations, and documents, that can help you communicate your data analysis and research findings more effectively.
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE,comment = NA, message=FALSE,
+                      fig.height=4, fig.width=6)
+```
+
+### Load the following Libraries
+```{r}
+library(ISLR2)
+library(MASS)
+library(caret)
+library(splines)
+library(pROC)
+library(rattle)
+library(recipes)
+library(lava)
+library(sjmisc)
+library(igraph)
+library(e1071)
+library(hardhat)
+library(ipred)
+library(caret)
+library(sjPlot)
+library(nnet)
+library(wakefield)
+library(kknn)
+library(dplyr)
+library(nnet)
+library(caTools)
+library(ROCR)
+library(stargazer)
+library(dplyr)
+library(nnet)
+library(caTools)
+library(ROCR)
+library(stargazer)
+library(ISLR)
+library(ISLR2)
+library(MASS)
+library(splines)
+library(splines2)
+library(pROC)
+library(ISLR)
+library(ISLR2)
+library(MASS)
+library(splines)
+library(splines2)
+library(pROC)
+library(randomForest)
+library(rpart)
+library(rpart.plot)
+library(rattle)
+library(ISLR2)
+library(MASS)
+library(splines)
+library(pROC)
+library(rattle)
+library(rpart)
+library(party)
+library(partykit)
+library(ggplot2)
+library(tune)
+library(TunePareto)
+```
+
+# HEART DISEASE DATA
+```{r}
+HeartData  = read.csv("Heart.csv", header=TRUE)
+head(HeartData,5)
+```
+
+### Attribute Definition
+Attribute Information
+1. Age: age of the patient [years]
+2. Sex: sex of the patient [M: Male, F: Female]
+3. ChestPainType: chest pain type [TA: Typical Angina, ATA: Atypical Angina, NAP: Non-Anginal Pain, ASY: Asymptomatic]
+4. RestingBP: resting blood pressure [mm Hg]
+5. Cholesterol: serum cholesterol [mm/dl]
+6. FastingBS: fasting blood sugar [1: if FastingBS > 120 mg/dl, 0: otherwise]
+7. RestingECG: resting electrocardiogram results [Normal: Normal, ST: having ST-T wave abnormality (T wave inversions and/or ST elevation or depression of > 0.05 mV), LVH: showing probable or definite left ventricular hypertrophy by Estes' criteria]
+8. MaxHR: maximum heart rate achieved [Numeric value between 60 and 202]
+9. ExerciseAngina: exercise-induced angina [Y: Yes, N: No]
+10. Oldpeak: oldpeak = ST [Numeric value measured in depression]
+11. ST_Slope: the slope of the peak exercise ST segment [Up: upsloping, Flat: flat, Down: downsloping]
+12. HeartDisease: output class [1: heart disease, 0: Normal]
+
+### Check Rows and Columns and attach the dara
+```{r}
+nrow(HeartData)
+HeartData = na.omit(HeartData)
+nrow(HeartData)
+attach(HeartData)
+```
+
+### Box plots
+```{r}
+par(mfrow=c(1,2))
+boxplot(Age ~ as.factor(AHD))
+boxplot(MaxHR ~ as.factor(AHD))
+boxplot(Chol ~ as.factor(AHD))
+boxplot(RestBP ~ as.factor(AHD))
+```
+
+### Scatter Matrix
+```{r}
+par(mfrow=c(1,1))
+
+pairs( cbind( Chol, MaxHR, RestBP,Age), pch=19, lower.panel=NULL, cex=.5)
+
+
+HeartData$HD = as.factor(HeartData$AHD)
+```
+
+```{r}
+str(HeartData)
+```
+
+### Box plot
+```{r}
+attach(HeartData)
+par(mfrow=c(1,2))
+boxplot(Age ~ HD)
+boxplot(MaxHR ~ HD)
+boxplot(Chol ~ HD)
+boxplot(RestBP ~ HD)
+```
+
+
+### looking at classification based on p.hat = .5 cutoff
+### 10-fold CV, repeated 5 times
+```{r}
+train_model <- trainControl(method = "repeatedcv", number = 5, repeats=10)
+
+
+model.cart <- train( HD ~ Age + as.factor(Sex) + as.factor(ChestPain)
+                       + Chol + MaxHR + RestBP + Fbs + RestECG + ExAng, 
+  data = HeartData, 
+  method = "rpart",
+  trControl = train_model)
+```
+
+### The estimated model
+```{r}
+model.cart
+
+```
+
+### View the final model                  
+```{r}
+model.cart$finalModel
+```
+
+### Plot the Model
+```{r}
+plot(model.cart)
+```
+
+### Confusion Matrix
+```{r}
+confusionMatrix(predict(model.cart, HeartData), 
+                reference=HeartData$HD, positive="Yes")
+```
+
+### F1 Score
+```{r}
+# Assuming you have already trained your SVM model (model.svm) using caret's train function
+
+# Make predictions on the entire dataset
+predictions <- predict(model.cart, HeartData, type = "raw")  # Replace HeartData with your actual data if different
+
+# Calculate the confusion matrix
+confusion.matrix <- table(HeartData$HD, predictions)
+
+# Calculate precision, recall, and F1 score using the confusion matrix
+precision <- (confusion.matrix[1, 1] / sum(confusion.matrix[, 1])) * 100  # Precision for class 1 (assuming HD is binary)
+recall <- (confusion.matrix[1, 1] / sum(confusion.matrix[1, ])) * 100  # Recall for class 1
+F1.score <- (2 * precision * recall) / (precision + recall)
+
+# Print the results
+cat("Precision for class 1:", precision, "%")
+cat("Recall for class 1:", recall, "%")
+cat("F1 Score:", F1.score, "%")
+
+```
+
+### Plot the Decision Tree
+```{r}
+fancyRpartPlot(model.cart$finalModel)
+```
+
+
+### Random Forest
+### summary(model.cart$finalModel)
+```{r}
+model.rf <- train(
+  HD ~ Age + as.factor(Sex) + as.factor(Thal)
+  + Chol + MaxHR + RestBP + Fbs + RestECG + ExAng,
+  data = HeartData, 
+  method = "rf",
+  trControl = train_model)
+model.rf
+```
+
+### Check the Method
+```{r}
+model.rf$method
+```
+
+### Check the Model Type
+```{r}
+model.rf$modelType
+```
+
+### Check the model information
+```{r}
+model.rf$modelInfo
+```
+
+
+```{r}
+model.rf$metric
+```
+
+
+### HD ~ Chol + MaxHR + RestBP + as.factor(Thal) + ExAng, 
+```{r}
+summary(model.rf$finalModel)
+
+model.rf$finalModel
+
+plot(model.rf$finalModel)
+
+varImp(model.rf$finalModel)
+plot( varImp(model.rf) )
+
+yhat = 1-predict(model.rf$finalModel, type="prob")[,1]
+plot(HeartData$MaxHR, yhat)
+```
+
+### Plot the model accuracy and randomly selected predictors
+```{r}
+plot(model.rf)
+```
+
+
+```{r}
+scatter.smooth(HeartData$MaxHR, yhat, span=.4) 
+scatter.smooth(HeartData$Age, yhat, span=.4) 
+scatter.smooth(HeartData$RestBP, yhat, span=.4) 
+scatter.smooth(HeartData$Chol, yhat, span=.4) 
+boxplot(yhat ~ as.factor(HeartData$Thal))
+boxplot(yhat ~ as.factor(HeartData$Sex))
+
+confusionMatrix(predict(model.rf, HeartData), 
+                reference=HeartData$HD, positive="Yes")
+```
+
+### F1 Score
+```{r}
+# Assuming you have already trained your SVM model (model.svm) using caret's train function
+
+# Make predictions on the entire dataset
+predictions <- predict(model.rf, HeartData, type = "raw")  # Replace HeartData with your actual data if different
+
+# Calculate the confusion matrix
+confusion.matrix <- table(HeartData$HD, predictions)
+confusion.matrix
+
+# Calculate precision, recall, and F1 score using the confusion matrix
+precision <- (confusion.matrix[1, 1] / sum(confusion.matrix[, 1])) * 100  # Precision for class 1 (assuming HD is binary)
+recall <- (confusion.matrix[1, 1] / sum(confusion.matrix[1, ])) * 100  # Recall for class 1
+F1.score <- (2 * precision * recall) / (precision + recall)
+
+# Print the results
+cat("Precision for class 1:", precision, "%")
+cat("Recall for class 1:", recall, "%")
+cat("F1 Score:", F1.score, "%")
+
+```
+
+
+### Support Vector Machine (SVM) with a linear Kernel
+```{r}
+# Install and load required packages (if not already installed)
+if (!require("caret")) install.packages("caret")
+library(caret)
+
+# Assuming you have loaded the HeartData and set HD as the response variable
+
+# Define training parameters (same repeated CV as before)
+train_model <- trainControl(method = "repeatedcv", number = 5, repeats = 10)
+
+# Train the SVM model with kernel = linear (adjust kernel for different types of SVM)
+model.svm <- train(HD ~ Age + as.factor(Sex) + as.factor(ChestPain) + Chol + MaxHR + RestBP + Fbs + RestECG + ExAng,
+                    data = HeartData,
+                    method = "svmLinear",  # Change method for different kernels
+                    trControl = train_model)
+```
+
+### Print model details
+```{r}
+model.svm
+```
+
+### Plot the Support Vector Machine
+```{r fig.height=5, fig.width=7}
+#plot(model.svm)
+```
+
+The image you sent appears to be the result of training a Support Vector Machine (SVM) model with a linear kernel using repeated cross-validation on the Heart disease dataset. Here's a breakdown of the key elements in the plot:
+
+### X-axis: 
+The X-axis represents the Cost (C) parameter of the SVM model. Cost controls the trade-off between maximizing the margin between classes and allowing for misclassifications.
+
+### Y-axis: 
+The Y-axis represents the accuracy of the model on the validation set during cross-validation.
+
+### Lines: 
+The three lines correspond to the accuracy obtained using different polynomial degrees for the feature scaling. Polynomial features allow the SVM model to capture non-linear relationships between the features.
+Interpreting the Impact of Cost (C) and Polynomial Degree
+
+### Cost (C): 
+A higher Cost (C) value places a stronger penalty on misclassifications, forcing the model to find a hyperplane with a wider margin even if it means some misclassifications. This can lead to underfitting if the data is not perfectly separable. A lower Cost allows for more misclassifications and can improve performance on noisy or complex datasets, but it can also lead to overfitting.
+
+### Polynomial Degree: 
+The degree of the polynomial features determines the complexity of the relationships the model can learn between the features. A higher polynomial degree allows for more complex relationships but can also increase the risk of overfitting, especially with a high Cost (C).
+
+### Choosing the Right Cost (C) and Polynomial Degree
+
+The ideal values for Cost (C) and polynomial degree depend on the specific dataset and problem.  They are often found through a process called hyperparameter tuning, where you train the model with a range of Cost (C) values and polynomial degrees and select the combination that results in the best performance on a held-out validation set.
+
+In the plot above, it appears that a Cost (C) of around 0.5 and a polynomial degree of 1 (linear) results in the best accuracy on the validation set based on this visualization. However, it's important to note that this is based on a small subset of the data (repeated cross-validation) and may not represent the generalizability of the model.
+
+
+Trying to plot the svm model with linear kernel gives an error because there are no tuning parameters with more than 1 value. Consider the results below for the best tune
+
+### View the best tune
+```{r}
+model.svm$bestTune
+```
+
+The best tune is when cost =1
+
+### View the final model
+```{r}
+model.svm$finalModel
+```
+
+```{r}
+# Get confusion matrix for SVM predictions
+predictions <- predict(model.svm, HeartData)
+confusion_matrix <- confusionMatrix(predictions, reference = HeartData$HD, positive = "Yes")
+print(confusion_matrix)
+```
+
+### View the final model (Overall best model)
+```{r}
+model.svm$finalModel
+```
+
+### F1 Score the SVM with linear Kernel
+
+```{r}
+# Assuming you have already trained your SVM model (model.svm) using caret's train function
+
+# Make predictions on the entire dataset
+predictions <- predict(model.svm, HeartData, type = "raw")  # Replace HeartData with your actual data if different
+
+# Calculate the confusion matrix
+confusion.matrix <- table(HeartData$HD, predictions)
+
+# Calculate precision, recall, and F1 score using the confusion matrix
+precision <- (confusion.matrix[1, 1] / sum(confusion.matrix[, 1])) * 100  # Precision for class 1 (assuming HD is binary)
+recall <- (confusion.matrix[1, 1] / sum(confusion.matrix[1, ])) * 100  # Recall for class 1
+F1.score <- (2 * precision * recall) / (precision + recall)
+
+# Print the results
+cat("Precision for class 1:", precision, "%")
+cat("Recall for class 1:", recall, "%")
+cat("F1 Score:", F1.score, "%")
+
+```
+
+### Radial Function
+```{r}
+# Define training parameters (same repeated CV as before)
+train_model <- trainControl(method = "repeatedcv", number = 5, repeats = 10)
+
+# Train the SVM model with kernel = linear (adjust kernel for different types of SVM)
+model.svmR <- train(HD ~ Age + as.factor(Sex) + as.factor(ChestPain) + Chol + MaxHR + RestBP + Fbs + RestECG + ExAng,
+                    data = HeartData,
+                    method = "svmRadial",  # Change method for different kernels
+                    trControl = train_model)
+```
+
+```{r}
+model.svmR$finalModel
+```
+
+### Plot the accuracy and cost
+```{r}
+plot(model.svmR)
+```
+
+```{r}
+model.svmR$bestTune
+```
+
+### Classification Accuracy
+```{r}
+predictions <- predict(model.svmR, HeartData)
+confusion_matrix <- confusionMatrix(predictions, reference = HeartData$HD, positive = "Yes")
+print(confusion_matrix)
+```
+
+### F1 Score for the SVM with Radian Kernel
+```{r}
+# Assuming you have already trained your SVM model (model.svm) using caret's train function
+
+# Make predictions on the entire dataset
+predictions <- predict(model.svmR, HeartData, type = "raw")  # Replace HeartData with your actual data if different
+
+# Calculate the confusion matrix
+confusion.matrix <- table(HeartData$HD, predictions)
+
+# Calculate precision, recall, and F1 score using the confusion matrix
+precision <- (confusion.matrix[1, 1] / sum(confusion.matrix[, 1])) * 100  # Precision for class 1 (assuming HD is binary)
+recall <- (confusion.matrix[1, 1] / sum(confusion.matrix[1, ])) * 100  # Recall for class 1
+F1.score <- (2 * precision * recall) / (precision + recall)
+
+# Print the results
+cat("Precision for class 1:", precision, "%")
+cat("Recall for class 1:", recall, "%")
+cat("F1 Score:", F1.score, "%")
+
+```
+
+
+### Polynomial Function
+```{r}
+# Define training parameters (same repeated CV as before)
+train_model <- trainControl(method = "repeatedcv", number = 5, repeats = 10)
+
+# Train the SVM model with kernel = linear (adjust kernel for different types of SVM)
+model.svmP <- train(HD ~ Age + as.factor(Sex) + as.factor(ChestPain) + Chol + MaxHR + RestBP + Fbs + RestECG + ExAng,
+                    data = HeartData,
+                    method = "svmPoly",  # Change method for different kernels
+                    trControl = train_model)
+predictions <- predict(model.svmP, HeartData)
+confusion_matrix <- confusionMatrix(predictions, reference = HeartData$HD, positive = "Yes")
+print(confusion_matrix)
+```
+
+### View the final model
+```{r}
+model.svmP$finalModel
+```
+
+```{r}
+plot(model.svmP)
+```
+
+### F1 Score for the SVM with Polynomial Kernel
+```{r}
+# Assuming you have already trained your SVM model (model.svm) using caret's train function
+
+# Make predictions on the entire dataset
+predictions <- predict(model.svmP, HeartData, type = "raw")  # Replace HeartData with your actual data if different
+
+# Calculate the confusion matrix
+confusion.matrix <- table(HeartData$HD, predictions)
+
+# Calculate precision, recall, and F1 score using the confusion matrix
+precision <- (confusion.matrix[1, 1] / sum(confusion.matrix[, 1])) * 100  # Precision for class 1 (assuming HD is binary)
+recall <- (confusion.matrix[1, 1] / sum(confusion.matrix[1, ])) * 100  # Recall for class 1
+F1.score <- (2 * precision * recall) / (precision + recall)
+
+# Print the results
+cat("Precision for class 1:", precision, "%")
+cat("Recall for class 1:", recall, "%")
+cat("F1 Score:", F1.score, "%")
+
+```
+## K-Nearest Neighbors Method
+### Let us store the model in model.knn
+```{r}
+trControl <- trainControl(method = "repeatedcv",number = 10,repeats = 3)
+model.knn <-  train(HD ~ Age + as.factor(Sex) + as.factor(ChestPain) + Chol + MaxHR + RestBP + Fbs + RestECG + ExAng,
+              data = HeartData,
+              method = 'knn',
+              tuneLength = 20,
+              trControl = trControl,
+              preProc = c("center","scale"))
+```
+
+### Model Performance
+```{r}
+model.knn
+```
+
+### Extract Important information from the model
+```{r}
+model.knn$finalModel
+```
+
+### Model information
+```{r}
+model.knn$modelInfo
+```
+
+### Confusion Matrix and Classification Accuracy
+```{r}
+predictions <- predict(model.knn, HeartData)
+confusion_matrix <- confusionMatrix(predictions, reference = HeartData$HD, positive = "Yes")
+print(confusion_matrix)
+```
+
+### Let us plot the model
+```{r}
+plot(model.knn)
+```
+
+### F1 Score for the KNN Model with Accuracy Metrics
+```{r}
+# Assuming you have already trained your SVM model (model.svm) using caret's train function
+
+# Make predictions on the entire dataset
+predictions <- predict(model.knn, HeartData, type = "raw")  # Replace HeartData with your actual data if different
+
+# Calculate the confusion matrix
+confusion.matrix <- table(HeartData$HD, predictions)
+
+# Calculate precision, recall, and F1 score using the confusion matrix
+precision <- (confusion.matrix[1, 1] / sum(confusion.matrix[, 1])) * 100  # Precision for class 1 (assuming HD is binary)
+recall <- (confusion.matrix[1, 1] / sum(confusion.matrix[1, ])) * 100  # Recall for class 1
+F1.score <- (2 * precision * recall) / (precision + recall)
+
+# Print the results
+cat("Precision for class 1:", precision, "%")
+cat("Recall for class 1:", recall, "%")
+cat("F1 Score:", F1.score, "%")
+
+```
+
+### Use ROC for Model Evaluation
+We can make few changes to improve the performance of the model. 
+```{r}
+trControl <- trainControl(method = "repeatedcv",
+                          number = 10,
+                          repeats = 3,
+                          classProbs = TRUE,
+                          summaryFunction = twoClassSummary)
+```
+
+Class probabilities are need if we want to use ROC for selecting the best model with optimal K
+
+```{r}
+set.seed(222)
+model.knn2 <-  train(HD ~ Age + as.factor(Sex) + as.factor(ChestPain) + Chol + MaxHR + RestBP + Fbs + RestECG + ExAng,
+              data = HeartData,
+              method = 'knn',
+              tuneLength = 20,
+              trControl = trControl,
+              preProc = c("center","scale"),
+              metric = "ROC",
+              tuneGrid = expand.grid(k= 1:60))
+```
+
+### Model Performance
+```{r}
+model.knn2
+```
+
+```{r}
+plot(model.knn2)
+```
+
+### Confusion Matrix and Accuracy
+```{r}
+predictions <- predict(model.knn2, HeartData)
+confusion_matrix <- confusionMatrix(predictions, reference = HeartData$HD, positive = "Yes")
+print(confusion_matrix)
+```
+
+### F1 Score for kNN model with ROC Metrics
+```{r}
+# Assuming you have already trained your SVM model (model.svm) using caret's train function
+
+# Make predictions on the entire dataset
+predictions <- predict(model.knn2, HeartData, type = "raw")  # Replace HeartData with your actual data if different
+
+# Calculate the confusion matrix
+confusion.matrix <- table(HeartData$HD, predictions)
+
+# Calculate precision, recall, and F1 score using the confusion matrix
+precision <- (confusion.matrix[1, 1] / sum(confusion.matrix[, 1])) * 100  # Precision for class 1 (assuming HD is binary)
+recall <- (confusion.matrix[1, 1] / sum(confusion.matrix[1, ])) * 100  # Recall for class 1
+F1.score <- (2 * precision * recall) / (precision + recall)
+
+# Print the results
+cat("Precision for class 1:", precision, "%")
+cat("Recall for class 1:", recall, "%")
+cat("F1 Score:", F1.score, "%")
+
+```
+### Estimating another KNN Model to Extract the Variables Importance
+Before we estimate our kNN methods, let us specify the train and test models
+
+### Let us store the model in FIT
+```{r}
+trControl <- trainControl(method = "repeatedcv",number = 10,repeats = 3)
+model.knn3 <-  train(HD ~ Age + as.factor(Sex) + as.factor(ChestPain) + Chol + MaxHR + RestBP + Fbs + RestECG + ExAng,
+              data = HeartData,
+              method = 'knn',
+              tuneLength = 20,
+              trControl = trControl,
+              preProc = c("center","scale"))
+```
+
+```{r}
+knn_pred <- predict(model.knn3, HeartData, type="prob")
+knn_pred
+```
+
+### Model Performance
+```{r}
+model.knn3
+```
+
+### View the Final Model
+```{r}
+model.knn3$finalModel
+```
+
+```{r}
+plot(model.knn3)
+```
+
+### Extreme Gradient Boosting
+```{r}
+set.seed(1234)
+boost.model1 <- train(HD ~ Age + as.factor(Sex) + as.factor(ChestPain) + Chol + MaxHR + RestBP + Fbs + RestECG + ExAng,data = HeartData, 
+                               method = 'xgbLinear',
+                               trControl = trainControl(method = 'cv', number = 10,
+                                                        classProbs = TRUE, summaryFunction = defaultSummary), metric = 'Accuracy')
+```
+
+### Plot the Model
+```{r}
+plot(boost.model1)
+```
+
+The plot above is the result of training a gradient boosting model with L2 regularization on the Heart disease dataset. Here's a breakdown of the key elements:
+
+### X-axis: 
+The X-axis represents the number of boosting iterations. Boosting builds an ensemble of weak learners sequentially, and each iteration corresponds to adding one more weak learner.
+
+### Y-axis: 
+The Y-axis represents the accuracy of the model on the validation set. As the number of boosting iterations increases, the model's accuracy on the training data typically increases. However, this can lead to overfitting, where the model performs well on the training data but poorly on unseen data.
+
+### Lines: 
+The three lines represent the accuracy of the model with three different L2 regularization strengths (alpha). Alpha is a hyperparameter that controls the penalty for model complexity. A higher alpha value corresponds to stronger regularization.
+Interpreting the Impact of L2 Regularization
+
+### Lower Alpha (0.0000): 
+With a low alpha value, the model has high flexibility and can learn complex patterns from the data. This can lead to overfitting, as reflected by the sharp increase in accuracy on the validation set early on, followed by a decrease and fluctuations.
+
+### Medium Alpha (0.0001): 
+A moderate alpha value introduces a penalty for model complexity, curbing overfitting. The accuracy on the validation set increases steadily but reaches a plateau, indicating a good balance between model complexity andgeneralizability.
+
+### High Alpha (0.1000): 
+With a high alpha value, the model is restricted from learning complex patterns. This can lead to underfitting, where the model fails to capture the underlying relationships in the data. As a result, the accuracy on the validation set remains low throughout.
+
+### Choosing the Right Alpha
+
+The ideal alpha value depends on the specific dataset and problem. It's often found through a process called hyperparameter tuning, where you train the model with a range of alpha values and select the one that results in the best performance on a held-out validation set.
+
+In conclusion, the plot you provided demonstrates the impact of L2 regularization on the performance of a gradient boosting model. By adjusting the alpha value, you can control the model's complexity and prevent overfitting.
+
+```{r}
+library(magrittr)
+library(dplyr)
+boost.model1
+boost.model1$results %>%
+  arrange(desc(Accuracy))%>%
+  head(1)
+```
+
+```{r}
+boost.model1$finalModel
+```
+
+### Evaluation of Variables Importance
+```{r}
+var.imp <- varImp(boost.model1)
+var.imp
+```
+
+### Plot the variable importance
+```{r}
+plot(var.imp, main = "A plot of variable importance for Extreme Gradient Boosting")
+```
+
+### Prediction using Test Data for "xgbLinear"
+```{r}
+Prediction <- predict(boost.model1, HeartData)
+head(Prediction,10)
+```
+
+### The Accuracy of the Model using the Testing Data
+```{r}
+confusionMatrix(Prediction,
+                HeartData$HD, positive = "Yes")
+```
+
+#### Predicted Probabilities
+```{r}
+options(scipen=999)
+pred_prob <- predict(boost.model1, HeartData, type="prob")
+data24 <- data.frame(pred_prob, Prediction)
+data24
+```
+
+### Calculate the ROC
+```{r}
+library(pROC)
+ROC <- roc(response =HeartData$HD,
+           predictor = predict(boost.model1, newdata = HeartData, type = 'prob')$Yes)
+ROC
+```
+
+### Plot the ROC Curve
+```{r}
+plot(ROC, legacy.axes = TRUE, main = "The ROC Curve and the Area Under the Curve")
+text(0.5, 0.5, paste("AUC =", round(auc(ROC), 4)), adj = c(0,1), cex = 1, font = 2)
+
+```
+
+ 
+### Method II (xgbTree)
+```{r}
+set.seed(1234)
+boost.model2 <- train(HD ~ Age + as.factor(Sex) + as.factor(ChestPain) + Chol + MaxHR + RestBP + Fbs + RestECG + ExAng, data = HeartData, 
+                               method = 'xgbTree',
+                               trControl = trainControl(method = 'cv', number = 10,
+                                                        classProbs = TRUE, summaryFunction = defaultSummary), metric = 'Accuracy')
+```
+
+### Plot the Model
+```{r fig.height=5, fig.width=7}
+plot(boost.model2)
+```
+
+The image you sent is the result of training an XGBoost model with early stopping on the Heart disease dataset. Here's a breakdown of the key elements:
+
+### X-axis: 
+The X-axis represents the maximum tree depth of the XGBoost model. Tree depth refers to the maximum number of splits allowed in each tree in the ensemble.
+
+### Y-axis: 
+The Y-axis represents the accuracy of the model on the validation set during cross-validation.
+
+### Lines: 
+The three colored lines represent the results for models trained with three different values for subsample: 0.50, 0.75, and 1.00. Subsample refers to the proportion of training examples used to fit each tree in the ensemble.
+
+### Markers (G): 
+The vertical lines with "G" indicate the best iteration according to the early stopping criteria. Early stopping is a technique to prevent overfitting by stopping the training process when the accuracy on the validation set starts to decrease.
+Interpreting the Impact of Max Tree Depth and Subsample
+
+### Max Tree Depth: 
+Increasing the tree depth allows the model to learn more complex patterns from the data. However, deeper trees can also lead to overfitting. The plot shows how the validation accuracy changes with different tree depths. The early stopping criteria is used to select the tree depth that yields the best performance on the validation set.
+
+### Subsample: 
+Subsample controls the randomness introduced into the model fitting process. A lower subsample value reduces randomness and can lead to overfitting. A higher subsample value increases randomness and can help prevent overfitting. The plot shows how the validation accuracy changes with different subsample values.
+
+### Impact of the Lines (Subsample values)
+
+The three lines in the plot represent the impact of different subsample values on the model's performance. It appears that a subsample value of 0.75 leads to the best accuracy on the validation set based on the early stopping criteria.
+
+### In conclusion
+
+The plot you provided demonstrates how the max tree depth and subsample value can affect the performance of an XGBoost model trained with early stopping. By carefully choosing these hyperparameters, you can improve the model's generalizability and prevent overfitting.
+
+### View the Model Summary
+```{r}
+boost.model2
+boost.model2$results %>%
+  arrange(desc(Accuracy))%>%
+  head(1)
+```
+
+### Prediction using Test Data for "xgbLinear"
+```{r}
+Prediction <- predict(boost.model2, HeartData)
+head(Prediction,10)
+```
+
+### The Accuracy of the Model using the Testing Data
+```{r}
+confusionMatrix(Prediction,
+                HeartData$HD, positive = "Yes")
+```
+
+#### Predicted Probabilities
+```{r}
+options(scipen=999)
+pred_prob <- predict(boost.model2, HeartData, type="prob")
+data24 <- data.frame(pred_prob, Prediction)
+data24
+```
+
+### Calculate the ROC
+```{r}
+library(pROC)
+ROC <- roc(response =HeartData$HD,
+           predictor = predict(boost.model2, newdata = HeartData, type = 'prob')$Yes)
+ROC
+```
+
+### Plot the ROC
+```{r}
+plot(ROC, legacy.axes = TRUE, main = "The ROC Curve and the Area Under the Curve")
+text(0.5, 0.5, paste("AUC =", round(auc(ROC), 4)), adj = c(0,1), cex = 1, font = 2)
+```
+
+
+### Linear Discriminant Analysis (LDA)
+Linear Discriminant Analysis (LDA) is a powerful and widely-used technique in machine learning and statistics, particularly for classification tasks. It's a method for dimensionality reduction and classification that seeks to find a linear combination of features that best separates two or more classes of objects or events. LDA is based on some key assumptions about the data, and its mathematical foundation makes it effective for a variety of applications.
+
+At its core, LDA assumes that the data within each class follows a multivariate normal distribution and that the classes have identical covariance matrices. This assumption means that the features within each class are distributed similarly, and the spread of data points around the mean is consistent across classes. Additionally, LDA assumes that the classes are linearly separable in the feature space, meaning that there exists a linear decision boundary that can effectively distinguish between classes.
+
+The goal of LDA is to find this optimal decision boundary, or hyperplane, that maximizes the separation between the classes while minimizing the variance within each class. This hyperplane is determined by maximizing a specific criterion, known as Fisher's criterion or the Fisher discriminant, which aims to maximize the between-class variance relative to the within-class variance. In other words, LDA aims to find a projection of the data onto a lower-dimensional space that maximizes the separation between classes while preserving the class structure as much as possible.
+
+To achieve this, LDA involves several steps. First, it computes the mean vectors for each class, representing the average feature values for the data points in each class. Next, it calculates the within-class scatter matrix, which measures the spread of data points within each class. This matrix reflects how much the data within each class varies from its mean.
+
+After computing the within-class scatter matrix, LDA also calculates the between-class scatter matrix, which quantifies the spread between the class means. This matrix indicates how much the class means differ from each other in the feature space. By comparing the between-class scatter to the within-class scatter, LDA identifies the direction in which the classes are most separable.
+
+The next step in LDA involves solving a generalized eigenvalue problem, where the goal is to find the eigenvectors corresponding to the largest eigenvalues of the matrix that results from the ratio of between-class scatter to within-class scatter. These eigenvectors form the basis for the linear discriminants, which define the optimal projection of the data onto a lower-dimensional space.
+
+Once the discriminant vectors are computed, LDA selects a subset of these vectors (usually, the number is equal to the number of classes minus one) that best separate the classes. These vectors form the basis for the new feature space, where each data point is projected onto the discriminant axes. Finally, LDA assigns class labels to new data points based on their projections onto these discriminant axes and the location of the decision boundary.
+
+One of the advantages of LDA is its simplicity and computational efficiency. The method is relatively straightforward to implement and does not require complex optimization techniques. Moreover, LDA tends to perform well when the classes are well-separated and the assumptions of normality and equal covariance matrices hold true.
+
+However, LDA also has its limitations. For example, it assumes that the classes are normally distributed and have identical covariance matrices, which may not always be the case in practice. If the classes have significantly different variances or non-linear decision boundaries, LDA may not perform optimally. Additionally, LDA is sensitive to outliers, as they can affect the estimation of the covariance matrices and the decision boundary.
+
+## Note:
+
+LDA assumes a common covariance matrix for all classes, while QDA allows for different covariance structures. Choose the model that best suits your data distribution.
+Both LDA and QDA might require additional libraries depending on the software you're using. Popular choices include scikit-learn for Python and caret for R.
+By making these modifications, you can train separate LDA and QDA models for heart disease prediction and compare their performance using the predict function and appropriate evaluation metrics like accuracy, precision, recall, or F1-score. Consider the estimated LDA model below
+
+### Train the LDA model
+```{r}
+model.lda <- train(HD ~ Age + as.factor(Sex) + as.factor(ChestPain) + Chol + MaxHR + RestBP + Fbs + RestECG + ExAng,
+                   data = HeartData,
+                   method = 'lda',
+                   tuneLength = 20,
+                   trControl = trControl,
+                   preProc = c("center","scale"))
+```
+
+
+### Extract Important Information from the Model
+```{r}
+model.lda$finalModel
+```
+
+### Interpretation of the LDA Model Output
+This output provides valuable information about the Linear Discriminant Analysis (LDA) model trained to classify heart disease (Yes/No) based on the provided features in the HeartData dataset. Here's a breakdown of each section:
+
+### 1. Prior Probabilities:
+
+This section shows the class distribution in your data.
+"No": 53.87% of the data points belong to the class without heart disease.
+"Yes": 46.13% of the data points belong to the class with heart disease.
+
+### 2. Group Means:
+
+This table presents the average values (means) for each feature across the two classes (No and Yes).
+For example, individuals without heart disease (No) tend to be younger (lower Age mean) and have lower cholesterol (Chol) compared to those with heart disease (Yes).
+Similarly, features like as.factor(Sex)1 (potentially coded for male) and specific chest pain types (nonanginal, nontypical, typical) also show differences in means between the classes.
+
+### 3. Coefficients of Linear Discriminants:
+
+This section is crucial for understanding how the model discriminates between the classes. It shows the coefficients (weights) assigned to each feature in the model's linear discriminant function (LD1).
+A positive coefficient indicates a positive association with the "Yes" class (heart disease) when that feature value increases.
+Conversely, a negative coefficient suggests a negative association with the "Yes" class, meaning higher values of that feature are more likely associated with the "No" class (no heart disease).
+Interpretation of Coefficients:
+
+Age: A slightly positive coefficient (0.127) suggests a weak association of increasing age with heart disease.
+as.factor(Sex)1 (potentially coded for male): The positive coefficient (0.493) indicates a positive association between being male and having heart disease.
+Chest Pain Types: All coefficients for chest pain types (nonanginal, nontypical, typical) are negative. This implies that having any type of chest pain (compared to no chest pain) is associated with an increased risk of heart disease, with the strongest association for "nonanginal" chest pain.
+Chol, MaxHR: Positive coefficients (0.125, -0.403) suggest higher cholesterol and lower maximum heart rate are associated with heart disease.
+RestBP, Fbs: The coefficient for resting blood pressure (RestBP) is positive (0.223), indicating a weak association with heart disease for higher values. Fbs (fasting blood sugar) has a negligible coefficient (-0.023), suggesting little influence on the model.
+RestECG, ExAng: Positive coefficients (0.122, 0.287) imply that abnormal ECG results (RestECG) and presence of exercise-induced angina (ExAng) are associated with an increased risk of heart disease.
+Important Note:
+
+These interpretations are based on the signs and magnitudes of the coefficients. However, the actual impact of each feature on the model's prediction depends on the interplay with other features and their respective coefficients.
+LDA assumes a common covariance matrix for all classes. If the data violates this assumption, Quadratic Discriminant Analysis (QDA) might be a better choice.
+By combining the information from group means and coefficients, you can gain valuable insights into how the model differentiates between individuals with and without heart disease based on the provided features. This can be helpful in understanding the model's decision-making process and identifying the most important factors influencing its predictions.
+
+### Classification Accuracy Matrix
+```{r}
+Prediction <- predict(model.lda, HeartData)
+head(Prediction,10)
+```
+
+### The Accuracy of the Model using the Testing Data
+```{r}
+confusionMatrix(Prediction,
+                HeartData$HD, positive = "Yes")
+```
+
+### Calculate the ROC
+```{r}
+library(pROC)
+ROC <- roc(response =HeartData$HD,
+           predictor = predict(model.lda, newdata = HeartData, type = 'prob')$Yes)
+ROC
+```
+
+### Plot the ROC
+```{r}
+plot(ROC, legacy.axes = TRUE, main = "The ROC Curve and the Area Under the Curve")
+text(0.5, 0.5, paste("AUC =", round(auc(ROC), 4)), adj = c(0,1), cex = 1, font = 2)
+```
+
+### Obtain the Accuracy
+```{r}
+model.lda$results
+```
+
+The results above come from a repeated cross-validation process used to evaluate the performance of the LDA model you previously built. Here's how to interpret each parameter:
+
+Accuracy: This is the average proportion of correct predictions made by the model across all folds in the cross-validation. In this case, the accuracy is 0.773, which means the model correctly classified approximately 77.3% of the data points on average.
+
+Kappa:  This statistic goes beyond simple accuracy and accounts for agreement beyond chance. A value of 0.543 suggests moderate agreement between the model's predictions and the actual classes. Here's a general interpretation of Kappa values:
+
+< 0: Less agreement than chance
+0.01-0.20: Slight agreement
+0.21-0.40: Fair agreement
+0.41-0.60: Moderate agreement
+0.61-0.80: Substantial agreement
+0.81-1.00: Almost perfect agreement
+
+AccuracySD & KappaSD: These values represent the standard deviations of Accuracy and Kappa across the cross-validation folds. They indicate the variability in performance across these folds. Lower standard deviations suggest more consistent performance.
+
+### Overall Interpretation:
+
+Based on these results, the LDA model achieves a decent accuracy (around 77%) in classifying heart disease. However, the Kappa value of 0.54 suggests moderate agreement, indicating there's room for improvement. The standard deviations provide additional information about the consistency of the model's performance across different data splits.
+
+### Here are some additional points to consider:
+The choice of a suitable threshold probability for classifying data points as "Yes" (heart disease) or "No" can influence the interpretation of accuracy and Kappa.
+It's important to compare these results with other classification models (e.g., KNN, QDA) trained on the same data to see which one performs best.
+These metrics provide initial insights into the model's performance, but further analysis with other evaluation metrics (e.g., precision, recall, F1-score) and visualization techniques might be helpful for a more comprehensive understanding.
+
+### Get the Model Information
+```{r}
+model.lda$modelInfo
+```
+
+### Quadratic Discriminant Analysis (QDA)
+LDA provides a less direct approach to modeling the predicted probabilities given some set of predictor(s) X. This algorithm models the distribution of the predictors X separately in each of the response classes (given Y’s), and the uses Bayes’ theorem to flip them around into estimates. When these distributions are assumed to be normal, it turns out that the model is very similar to logistic regression.
+
+### Why do we need this method?
+When the classes are well-separated, the parameter estimates for the logistic model are surprisingly unstable. LDA does not suffer from this. If n is small and the distribution of the predictors X is approximately normal in each of the classes, the LDA model is more stable than logistic. For these reasons, and some others, LDA is the preferred method when dealing with > 2 response classes.
+The LDA classifier assumes that each class comes from a normal distribution with a class-specific mean vector and a common variance. We utilize LDA to estimate the parameters so that we can leverage the Bayes classifier. The Bayes classifier is a simple and highly effective classifier that assigns each observation to the most likely class given its predictor values. The Bayes classifier has the lowest possible error rate out of all classifiers if the terms are correctly specified. Thus LDA is a classifier that attempts to approximate the Bayes classifier.
+
+While some parameters could be specified with some prior class membership probability insight, LDA estimates some of these model parameters by simply using the proportion of the training observations that belong to the kth class. For p > 1 predictors, the LDA classifier assumes that the observations in the kth class are drawn from a multivariate gaussian distribution which has a class specific mean and common variance.
+
+Once the parameters have been specified, the Bayes classifier draws p (number of predictors) decision boundaries. For example: for p = 3, there are three pairs of classes among the three classes. That is, one Bayes decision boundary separates class 1 from class 2, one separates class 1 from class 3, and one separates class 2 from class 3. The classifier then simply classifies an observation according the region in which it is located.
+
+### Alternative Methods
+Quadratic Discriminant Analysis (QDA) holds the same assumptions as LDA except that the co variance matrix that is not common to all K classes.
+
+### How to choose between them?
+The difference is really a bias-variance trade-off. With p predictors, estimating a co variance matrix requires estimating p(p+1)/2 parameters. The QDA estimates a separate co variance matrix for each class, so as the number of predictors becomes high, we experience a computational expense. Conversely, if we assume a common co variance matrix, we only have to do the computation once. LDA is a much less flexible classifier, than QDA, thus has substantially lower variance. However, if the assumption of uniform variance is highly off, then LDA can suffer high bias. In general, LDA tends to be better than QDA if there are relatively few training observations, so therefore reducing variance is crucial. QDA is recommended if the training set is very large, so that the variance of the classifier is not a major concern.
+
+Between Logistic regression LDA and QDA, the biggest things to take into consideration are the type of decision boundary that is required. If highly linear, than LDA and Logistic may prove superior, if non-linear, the edge may be given to QDA. Though keep in mind we can do simple transformations to take non-linearity into consideration with Logistic models, similar to how we did in linear regression.
+
+LDA and QDA work well when class separation and normality assumption holds true in the dataset. If the dataset is not normal then Logistic regression has an edge over LDA and QDA model. Logistic regression does not work properly if the response classes are fully separated from each other. In general, logistic regression is used for binomial classification and in case of multiple response classes, LDA and QDA are more popular.
+
+### Train the QDA Model
+```{r}
+model.qda <- train(HD ~ Age + as.factor(Sex) + as.factor(ChestPain) + Chol + MaxHR + RestBP + Fbs + RestECG + ExAng,
+                   data = HeartData,
+                   method = 'qda',
+                   tuneLength = 20,
+                   trControl = trControl,
+                   preProc = c("center","scale"))
+```
+
+### Extract Important Information from the Model
+```{r}
+model.qda$finalModel
+```
+
+The output above is the result of fitting a Quadratic Discriminant Analysis (QDA) model to the data. Here's a breakdown of the information it presents:
+
+### 1. Prior Probabilities:
+
+This section is identical to the LDA output and shows the class distribution in your data:
+"No": 53.87% of the data points belong to the class without heart disease.
+"Yes": 46.13% of the data points belong to the class with heart disease.
+
+### 2. Group Means:
+
+Similar to LDA, this table presents the average values (means) for each feature across the two classes (No and Yes).
+The interpretation of group means remains the same, providing insights into how features differ between individuals with and without heart disease.
+Important Differences from LDA:
+
+QDA differs from LDA in its assumption about the covariance structure of the features within each class.
+
+LDA: Assumes a common covariance matrix for all classes.
+QDA: Allows for different covariance matrices for each class, potentially leading to more accurate models when the data exhibits unequal variances or correlations between features within each class.
+Note: Due to this difference, the interpretation of coefficients in QDA models might be slightly more complex compared to LDA. It's generally recommended to rely on permutation importance for robust variable importance assessment in QDA as well.
+
+
+### Classification Accuracy Matrix
+```{r}
+Prediction <- predict(model.qda, HeartData)
+head(Prediction,10)
+```
+
+### The Accuracy of the Model using the Testing Data
+```{r}
+confusionMatrix(Prediction,
+                HeartData$HD, positive = "Yes")
+```
+
+### Interpretation of QDA Classification Results: 
+
+#### Confusion Matrix and Statistics
+The provided output presents various metrics to evaluate the performance of your QDA model for classifying heart disease (Yes/No) in the HeartData dataset. Here's a breakdown of each section and its interpretation for the "Yes" class (heart disease) as specified:
+
+### Confusion Matrix:
+
+This table summarizes the model's predictions compared to the actual classifications.
+136: Correctly predicted cases without heart disease (True Negatives).
+27: Incorrectly predicted cases without heart disease (False Negatives). These represent missed cases of heart disease.
+24: Incorrectly predicted cases with heart disease (False Positives). These are individuals predicted to have heart disease but actually don't.
+110: Correctly predicted cases with heart disease (True Positives).
+
+### Accuracy and Related Statistics:
+
+Accuracy (0.8283): This is the proportion of correctly classified cases (both positive and negative) – (136+110) / (136+27+24+110). It indicates the model performs reasonably well, correctly classifying around 83% of the data points.
+95% Confidence Interval (CI) for Accuracy: This range (0.7805, 0.8694) indicates that we can be 95% confident that the true population accuracy falls within this interval.
+No Information Rate (NIR) (0.5387): This is the baseline accuracy if we simply predicted the majority class (without any model). In this case, it's the proportion of cases in the "No" class (0.5387).
+P-Value [Acc > NIR]: This extremely small value (<0.0000000000000002) suggests the model's accuracy is statistically significantly higher than just predicting the majority class.
+
+### Kappa Statistic (0.6539):
+
+Kappa considers agreement beyond chance and provides a more nuanced assessment. A value of 0.654 indicates moderate agreement between the model's predictions and the actual classes.
+McNemar's Test P-Value (0.7794):
+
+This test (non-significant here) compares the model's predictions for positive and negative classes and suggests no statistically significant difference in classification errors between the two classes.
+Sensitivity (0.8029) & Specificity (0.8500):
+
+Sensitivity (True Positive Rate): The proportion of actual heart disease cases (Yes) correctly predicted by the model (110 / (24+110)). It indicates the model does a good job identifying individuals with heart disease (80%).
+Specificity (True Negative Rate): The proportion of cases without heart disease (No) correctly predicted by the model (136 / (136+27)). It suggests the model also performs well in identifying those who don't have the disease (85%).
+Positive Predictive Value (PPV) (0.8209) & Negative Predictive Value (NPV) (0.8344):
+
+PPV: The proportion of predicted heart disease cases (Yes) that are truly positive (110 / (24+110)). It indicates that among those the model predicts to have heart disease, around 82% actually have it.
+NPV: The proportion of predicted cases without heart disease (No) that are truly negative (136 / (136+27)). It suggests that of those predicted to be free of heart disease, around 83% are truly healthy.
+Prevalence (0.4613), Detection Rate (0.3704), Detection Prevalence (0.4512):
+
+Prevalence: The proportion of cases with heart disease in the data (0.4613), which is the same as the prior probability of the "Yes" class.
+Detection Rate: The proportion of actual heart disease cases (Yes) identified by the model (110 / total number of cases).
+Detection Prevalence: The proportion of positive predictions (Yes) by the model that are true positives (110 / total number of positive predictions).
+Balanced Accuracy (0.8265):
+
+This metric considers both sensitivity and specificity and provides an average between the two, which is again around 0.83, indicating good overall performance.
+Overall Interpretation:
+
+Based on these metrics, the QDA model demonstrates reasonable performance in classifying heart disease. It achieves good accuracy
+
+### Calculate the ROC
+```{r}
+library(pROC)
+ROC <- roc(response =HeartData$HD,
+           predictor = predict(model.qda, newdata = HeartData, type = 'prob')$Yes)
+ROC
+```
+
+### Plot the ROC
+```{r}
+plot(ROC, legacy.axes = TRUE, main = "The ROC Curve and the Area Under the Curve")
+text(0.5, 0.5, paste("AUC =", round(auc(ROC), 4)), adj = c(0,1), cex = 1, font = 2)
+```
+
+The graph above is a ROC Curve and its Area Under the Curve (AUC) for a classification model. This specific ROC curve relates to the performance of the QDA model trained on the Heart disease dataset to classify the presence or absence of heart disease.
+
+### Understanding ROC Curves:
+An ROC curve plots the True Positive Rate (TPR) on the y-axis against the False Positive Rate (FPR) on the x-axis.
+TPR (also known as sensitivity) represents the proportion of correctly classified positive cases (individuals with heart disease) out of all actual positive cases.
+FPR (also known as 1-Specificity) represents the proportion of incorrectly classified negative cases (individuals predicted to have heart disease but are actually healthy) out of all actual negative cases.
+
+### Interpreting the ROC Curve:
+
+The ideal ROC curve would be a straight line rising from the bottom left corner (0,0) to the top left corner (1,1). This indicates perfect classification, where the model correctly identifies all positive cases without any false positives.
+
+The AUC value quantifies the overall performance of the classification model. It represents the probability that the model will rank a randomly chosen positive case higher than a randomly chosen negative case.
+A higher AUC value indicates better performance. An AUC of 1 signifies perfect classification, while an AUC of 0.5 represents random guessing.
+
+### Interpretation of AUC in this case:
+
+The AUC in the image is 0.8912. This is a relatively high value, suggesting good discriminative ability of the QDA model in classifying individuals with and without heart disease.
+
+### In conclusion:
+The ROC curve and AUC together provide valuable insights into the performance of your QDA model for classifying heart disease. The model shows good discriminative ability in distinguishing between the two classes, with an AUC of 0.8912. However, it's important to remember that the model is not perfect, and there will be some mis-classifications.
+
+### Obtain the Accuracy
+```{r}
+model.qda$results
+```
+
+
+
+### Get the Model Information
+```{r}
+model.qda$modelInfo
+```
+
+
+### NAIVE BAYES MODEL
+
+```{r}
+# Define the formula for the classification task (target variable ~ features)
+formula <- HD ~ Age + as.factor(Sex) + as.factor(ChestPain) + Chol + MaxHR + RestBP + Fbs + RestECG + ExAng
+
+# Create a train control object for repeated cross-validation (adjust as needed)
+trControl <- trainControl(method = "repeatedcv", number = 10)  # 10-fold cross-validation
+
+# Train the Naive Bayes model with pre-processing (centering and scaling)
+model.nb <- train(formula, data = HeartData, 
+                  method = "naive_bayes", 
+                  tuneLength = 20,  # Adjust tuning parameter search iterations
+                  trControl = trControl,
+                  preProc = c("center", "scale"))
+```
+
+### Print the Naive Bayes Model
+```{r}
+model.nb
+```
+
+### Plot the Model
+```{r}
+plot(model.nb)
+```
+
+
+### View the Final Model
+```{r}
+model.nb$finalModel
+```
+
+### Obtain the Model Information
+```{r}
+model.nb$modelInfo
+```
+
+### Classification Accuracy Matrix
+```{r}
+Prediction <- predict(model.nb, HeartData)
+head(Prediction,10)
+```
+
+### The Accuracy of the Model using the Testing Data
+```{r}
+confusionMatrix(Prediction,
+                HeartData$HD, positive = "Yes")
+```
+
+### Calculate the ROC
+```{r}
+library(pROC)
+ROC <- roc(response =HeartData$HD,
+           predictor = predict(model.nb, newdata = HeartData, type = 'prob')$Yes)
+ROC
+```
+
+### Plot the ROC
+```{r}
+plot(ROC, legacy.axes = TRUE, main = "The ROC Curve and the Area Under the Curve")
+text(0.5, 0.5, paste("AUC =", round(auc(ROC), 4)), adj = c(0,1), cex = 1, font = 2)
+```
+
+### Obtain the Accuracy
+```{r}
+model.qda$results
+```
+
+
+
+## LOGISTIC REGRESSION
+### Load the Data
+```{r}
+set.seed(1234)
+diabetes_data <- read.csv("diabetes_prediction_dataset.csv")
+attach(diabetes_data)
+head(diabetes_data,5)
+```
+
+### Summary Statistics
+```{r}
+library(DescTools)
+library(devtools)
+library(predict3d)
+library(psych)
+library(dplyr)
+library(gtsummary)
+library(DescTools)
+library(nortest) 
+library(lmtest)
+library(sandwich)
+library(sjmisc)
+library(ggplot2)
+library(stargazer)
+options(scipen = 999)
+knitr::kable(
+  describeBy(diabetes_data[c(-1,-5)]) %>% round(2) 
+)
+```
+
+The mean age of the participants was 41.89 years (SD = 22.52), with a range from 0.08 to 80.00 years. On the other hand, prevalence of hypertension was 0.07 (SD = 0.26), while heart disease was reported in 0.04 (SD = 0.19) of the cases. The mean body mass index (BMI) was 27.32 (SD = 6.64), ranging from 10.01 to 95.69. HbA1c levels averaged at 5.53 (SD = 1.07), with values ranging from 3.50 to 9.00. Blood glucose levels had a mean of 138.06 (SD = 40.71), with a wide range from 80.00 to 300.00. The prevalence of diabetes was 0.09 (SD = 0.28), indicating a relatively low frequency in the sample.
+
+# Model Estimation
+## Model One: Classification and Regression Tree (CART) Model
+```{r}
+set.seed(1234)
+diabetes_data$gender <- as.factor(diabetes_data$gender)
+diabetes_data$smoking_history <- as.factor(diabetes_data$smoking_history)
+diabetes_data$heart_disease <- as.factor(diabetes_data$heart_disease)
+diabetes_data$hypertension <- factor(diabetes_data$hypertension)
+diabetes_data$diabetes <- factor(diabetes_data$diabetes, levels = c(0,1),
+                                 labels = c("No", "Yes"))
+head(diabetes_data,10)
+```
+
+### Check the Structure of the Data
+```{r}
+str(diabetes_data)
+```
+
+### Frequency Distribution and Chi-Square Test of Independence
+```{r}
+library(sjmisc)
+frq(diabetes_data, gender)
+```
+
+### Chi-Square
+```{r}
+sjt.xtab(diabetes_data$heart_disease, diabetes_data$diabetes, show.col.prc = TRUE, show.row.prc = TRUE)
+```
+
+### Run Fisher's Exat Chi-Square Test
+```{r}
+library(tidyverse)
+library(MASS)
+library(pROC)
+library(rpart)
+library(gtsummary)
+library(rattle)
+library(ISLR2)
+library(ggplot2)
+library(caret)
+library(splines)
+library(summarytools)
+library(tidymodels)
+library(dplyr)
+library(gt)
+```
+
+```{r}
+diabetes_data[,c(1,5,9)]%>%
+  tbl_summary(by = diabetes)
+```
+
+
+### fit logistic regression for different variables
+```{r}
+model_1 = glm(diabetes ~ gender + age + hypertension + heart_disease + smoking_history + bmi + HbA1c_level + blood_glucose_level, family=binomial)
+summary(model_1)
+```
+
+### View the Model using tab_model function
+```{r}
+tab_model(model_1,
+          show.stat = TRUE,
+          show.se = TRUE)
+```
+
+### Plot the ROC Curve
+```{r}
+roc_curve = roc(diabetes ~ predict(model_1, type="response"))
+plot.roc(roc_curve, print.auc=T, print.thres=T)
+```
+
+
+
+
+## looking at classification based on p.hat = .5 cutoff
+### 10-fold CV, repeated 5 times
+```{r}
+train_model <- trainControl(method = "repeatedcv", number = 5, repeats = 10)
+
+# Train the model
+model <- train(
+  diabetes ~ gender + age + hypertension + heart_disease + smoking_history + bmi + HbA1c_level + blood_glucose_level, 
+  data = diabetes_data, 
+  method = "glm",
+  family = "binomial",
+  trControl = train_model)
+model
+```
+
+```{r}
+summary(model$finalModel)
+```
+
+### View the Model using tab_model
+```{r}
+tab_model(model$finalModel, 
+          show.stat = TRUE,
+          show.se = TRUE,
+          dv.labels = c("Diabetes[Yes, No]")
+          )
+```
+
+### Confusion Matrix
+```{r}
+confusionMatrix(predict(model, diabetes_data), 
+                reference = diabetes_data$diabetes, positive="Yes")
+```
+
+
+

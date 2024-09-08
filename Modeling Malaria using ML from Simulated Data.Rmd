@@ -1,0 +1,733 @@
+---
+title: "SIMULATION OF MALARIA DATA"
+author: "Lumumba Wandera Victor"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = NA, message = FALSE, warning = FALSE,
+                      fig.height = 4, fig.width = 5)
+```
+
+### Load the Data
+```{r}
+library(caret) #for machine learning models
+library(psych) ##for description of  data
+library(ggplot2) ##for data visualization
+library(caretEnsemble)##enables the creation of ensemble models
+library(tidyverse) ##for data manipulation
+library(mlbench)  ## for benchmarking ML Models
+library(flextable) ## to create and style tables
+library(mltools) #for hyperparameter tuning
+library(tictoc) #for determining the time taken for a model to run
+library(ROSE)  ## for random oversampling
+library(smotefamily) ## for smote sampling
+library(ROCR) ##For ROC curve
+```
+
+### Import the data
+```{r}
+malaria_data <- read.csv("malaria.simulateddata.csv")
+head(malaria_data,10)
+```
+Explanation of the Variables:
+
+### Continuous Variables:
+
+age: Age of the individual.
+income: Annual income of the individual.
+temperature: Average temperature of the area.
+rainfall: Average rainfall in the area.
+mosquito_density: Density of mosquitoes in the area.
+distance_to_health_facility: Distance to the nearest health facility.
+bed_net_usage: Percentage of bed net usage in the household.
+education_years: Number of years of education.
+household_size: Number of people in the household.
+urbanization_rate: Percentage of urbanization in the area.
+
+### Categorical Variables:
+
+gender: Gender of the individual (male or female).
+occupation: Occupation of the individual.
+housing_quality: Quality of housing (poor, average, or good).
+access_to_clean_water: Access to clean water (yes or no).
+sanitation_facilities: Quality of sanitation facilities (poor, average, or good).
+region: Geographical region (north, south, east, or west).
+vaccination_status: Whether the individual is vaccinated (yes or no).
+insecticide_treated_nets: Whether insecticide-treated nets are used (yes or no).
+malaria_history: History of malaria infection (yes or no).
+health_insurance: Whether the individual has health insurance (yes or no).
+
+
+### Convert All Character Variables to Factors
+```{r}
+factor_cols <- sapply(malaria_data, is.character)
+malaria_data[, factor_cols] <- lapply(malaria_data[, factor_cols], as.factor)
+head(malaria_data,5)
+```
+
+### Create Factors for the Outcome variable
+```{r}
+malaria_data$infected <- factor(malaria_data$infected, levels = c(0,1),
+                                labels = c("Not Infected", "Infected"))
+head(malaria_data,5)
+```
+
+### Dimension of the Data
+```{r}
+dim(malaria_data)
+```
+
+### View the Variable Names
+```{r}
+names(malaria_data)
+```
+### Explore the data
+```{r}
+attach(malaria_data)
+summary(malaria_data) ###Descriptive Statistics
+describe(malaria_data)###Descriptive Statistics
+sum(is.na(malaria_data))###Check for missing data
+```
+
+### Bag Graph of the Predicted variable
+```{r, fig.height=5, fig.width=7}
+Obj <- malaria_data %>%
+  group_by(infected)%>%
+  summarize(Percentage = n()/nrow(malaria_data)*100)
+
+ggplot(Obj, aes(x= infected, y = Percentage, fill= infected))+
+  geom_bar(stat = "identity")+
+  geom_text(aes(label = sprintf("%.1f%%",Percentage)),vjust=-0.2)+
+  labs(title = "",
+       x ="Malaria Detected",
+       y="Percent")+
+   theme(axis.text.x = element_text(angle = 0, vjust = 0.5))+
+  ggtitle("Malaria Incidence Detected")
+```
+
+
+### DATA PARTITION FOR MACHINE LEARNING
+```{r}
+head(malaria_data)
+str(malaria_data)
+```
+
+```{r}
+set.seed(123)
+ind=sample(2, nrow(malaria_data),replace =T, prob=c(0.70,0.30))
+train=malaria_data[ind==1,]
+test= malaria_data[ind==2,]
+```
+
+## Get the dimensions of your train and test data
+```{r}
+dim(train)
+dim(test)
+```
+
+Now Let's train some machine learning models using package caret. The caret R package (Kuhn et al. 2021) (short for Classification And REgression Training) to carry out machine learning tasks in RStudio. The caret package offers a range of tools and models for classification and regression machine learning problems. In fact, it offers over 200 different machine learning models from which to choose.  Don’t worry, we don’t expect you to use them all!
+
+### VIEW THE MODELS IN CARET
+```{r}
+models= getModelInfo()
+names(models)
+```
+
+### Check for zero variance predictors:
+```{r}
+nzv <- nearZeroVar(malaria_data[,-1], saveMetrics = TRUE)
+```
+
+```{r}
+print(nzv)
+```
+
+The results above show that there is no feature with zero variance
+## Remove nzv
+```{r}
+#mdata1 <- mdata[, !nzv$nzv]
+#dim(mdata1)
+```
+
+```{r}
+missing_values <- colSums(is.na(train))
+missing_values
+```
+
+
+
+### Prepare training scheme for cross-validation
+```{r}
+control <- trainControl(method="repeatedcv", number=10, repeats=5)
+```
+
+###TRAIN YOUR ML MODELS
+# Train a SVM model
+```{r}
+set.seed(123)
+tic()
+SvmModel <- train(infected~.,data=train, method="svmRadial", trControl=control, na.action = na.omit)
+toc()
+SvmModel
+```
+
+### Plot the Model (Accuracy and Cost)
+```{r}
+results <- SvmModel$results
+plot(SvmModel)
+```
+
+### Plot the Accuracy and Sigma
+```{r}
+results
+```
+
+### Accuracy and Sigma
+```{r}
+ggplot(results, aes(x = sigma, y = Accuracy)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Accuracy vs. Sigma for SVM Model",
+       x = "Sigma",
+       y = "Accuracy")
+```
+
+
+### Accuracy and Kappa Value
+```{r}
+ggplot(results, aes(x = Kappa, y = Accuracy)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Accuracy vs. Kappa for SVM Model",
+       x = "Kappa",
+       y = "Accuracy")
+
+```
+
+### Prediction using the Test Set
+```{r}
+Svmpred= predict(SvmModel,newdata = test)
+SVM.cM<- confusionMatrix(Svmpred,as.factor(test$infected), positive = 'Infected', mode='everything')
+SVM.cM
+```
+
+```{r}
+M1<- SVM.cM$byClass[c(1, 2, 5, 7, 11)]
+M1
+```
+
+
+
+### View the Predicted Case and the Ground Truth
+```{r}
+data.f <- data.frame(Svmpred, test$infected)
+head(data.f,5)
+```
+
+### plotting confusion matrix
+```{r}
+SVM.cM$table
+fourfoldplot(SVM.cM$table, col=c(2,3), main="Imbalanced SVM Confusion Matrix")
+plot(varImp(SvmModel, scale=T))
+```
+
+## Train the decision Tree
+```{r}
+set.seed(123)
+tic()
+DTModel <- train(infected~., data=train, method="rpart", trControl=control)
+toc()
+DTModel
+```
+
+```{r}
+DTpred=predict(DTModel,newdata = test)
+DT.cM<- confusionMatrix(DTpred,
+                        reference = test$infected, positive = 'Infected', mode='everything')
+DT.cM
+```
+
+### Prediction
+```{r}
+M2<- DT.cM$byClass[c(1, 2, 5, 7, 11)]
+M2
+```
+
+### plotting confusion matrix
+```{R}
+DT.cM$table
+varImp(DTModel)
+plot(varImp(DTModel))
+fourfoldplot(DT.cM$table, col=rainbow(4), main="Imbalanced RF Confusion Matrix")
+```
+
+
+## Train a Random Forest model
+```{r}
+set.seed(123)
+tic()
+RFModel <- train(infected~., data=train, method="rf", trControl=control)
+toc()
+RFModel
+```
+
+### Prediction
+```{r}
+RFpred=predict(RFModel,newdata = test)
+RF.cM<- confusionMatrix(RFpred,
+                        reference = test$infected , positive = 'Infected', mode='everything')
+RF.cM
+```
+
+```{R}
+M3<- RF.cM$byClass[c(1, 2, 5, 7, 11)]
+M3
+```
+
+### plotting confusion matrix
+```{R}
+RF.cM$table
+fourfoldplot(RF.cM$table, col=rainbow(4), main="Imbalanced RF Confusion Matrix")
+varImp(RFModel)
+plot(varImp(RFModel, scale=T))
+```
+
+### Calculate the and Plot the ROC
+```{r, fig.height=4, fig.width=6}
+library(pROC)
+library(ggplot2)
+
+# Compute the ROC curve
+ROC <- roc(response = test$infected,
+           predictor = predict(RFModel, newdata = test, type = 'prob')$Infected)
+
+# Extract the AUC
+auc_value <- auc(ROC)
+
+# Convert ROC curve to a data frame
+roc_data <- data.frame(
+  tpr = ROC$sensitivities,
+  fpr = 1 - ROC$specificities
+)
+
+# Plot the ROC curve using ggplot2
+ggplot(roc_data, aes(x = fpr, y = tpr)) +
+  geom_line(color = "blue") +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red") +
+  labs(
+    title = "The ROC Curve and the Area Under the Curve",
+    x = "False Positive Rate",
+    y = "True Positive Rate"
+  ) +
+  annotate("text", x = 0.5, y = 0.5, label = paste("AUC =", round(auc_value, 4)), size = 5, hjust = 0)
+
+```
+
+
+### Train an Logisitic Regression model
+```{r}
+set.seed(123)
+lrModel <- train(infected~., 
+                 data=train, 
+                 method="glm", 
+                 trControl=control)
+lrModel
+```
+
+### Prediction
+```{r}
+lrpred=predict(lrModel,newdata = test)
+lr.cM<- confusionMatrix(lrpred,
+                        reference = test$infected, positive = 'Infected', mode='everything')
+lr.cM
+```
+
+```{r}
+M4<- lr.cM$byClass[c(1, 2, 5, 7, 11)]
+M4
+```
+
+### plotting confusion matrix
+```{r}
+lr.cM$table
+fourfoldplot(lr.cM$table, col=rainbow(4), main="Imbalanced LR Confusion Matrix")
+plot(varImp(lrModel, scale=T))
+```
+
+```{r}
+# Compute the ROC curve
+ROC <- roc(response = test$infected,
+           predictor = predict(lrModel, newdata = test, type = 'prob')$Infected)
+
+# Extract the AUC
+auc_value <- auc(ROC)
+
+# Convert ROC curve to a data frame
+roc_data <- data.frame(
+  tpr = ROC$sensitivities,
+  fpr = 1 - ROC$specificities
+)
+
+# Plot the ROC curve using ggplot2
+ggplot(roc_data, aes(x = fpr, y = tpr)) +
+  geom_line(color = "blue") +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red") +
+  labs(
+    title = "The ROC Curve and the Area Under the Curve",
+    x = "False Positive Rate",
+    y = "True Positive Rate"
+  ) +
+  annotate("text", x = 0.5, y = 0.5, label = paste("AUC =", round(auc_value, 4)), size = 5, hjust = 0)
+```
+
+### Train a k- Nearest Neigbour model
+```{r}
+set.seed(123)
+knnModel <- train(infected~., 
+                  data=train, 
+                  method="knn", 
+                  trControl=control)
+knnModel
+```
+
+### View the Nearest Neighbors
+```{r}
+knnModel$finalModel
+```
+
+### Prediction
+```{r}
+knnpred=predict(knnModel,newdata = test)
+knn.cM<- confusionMatrix(knnpred,as.factor(test$severe_maleria), positive = 'Infected', mode='everything')
+knn.cM
+m4<- knn.cM$byClass[c(1, 2, 5, 7, 11)]
+m4
+```
+
+### plotting confusion matrix
+```{r}
+knn.cM$table
+fourfoldplot(knn.cM$table, col=rainbow(4), main="Imbalanced KNN Confusion Matrix")
+plot(varImp(knnModel, scale=T))
+```
+
+
+
+### Alternative KNN Approach
+```{r}
+x <- train[,-18]
+  y <- train[,18]
+```
+
+```{r}
+library(e1071)
+obj2 <- tune.knn(x, y, k = 1:10, tunecontrol = tune.control(sampling = "boot"))
+summary(obj2)
+plot(obj2)
+```
+
+```{r}
+fit_knn <- knn3(factor(severe_maleria) ~ ., data = train, k = 51)
+fit_knn$k
+```
+
+
+## Quadratic and Linear Discriminant Analysis
+```{r, warning=FALSE}
+qda_fit <- qda(factor(severe_maleria) ~., data = train)
+qda_preds <- predict(qda_fit, test)
+```
+
+
+```{r, warning=FALSE}
+confusionMatrix(data = as.factor(qda_preds$class), reference = as.factor(test$severe_maleria))
+```
+
+## Lda
+```{r}
+lda_fit <- lda(factor(severe_maleria) ~., data = train)
+lda_preds <- predict(lda_fit, test)
+confusionMatrix(data = as.factor(lda_preds$class), reference = as.factor(test$severe_maleria))
+```
+
+
+## ROC
+
+```{r, message=FALSE, warning=FALSE}
+pred_qda <- qda_preds$posterior[,2]
+test %>% mutate(pred=pred_qda, label=as.factor(severe_maleria)) %>%
+  ggplot(aes(label,pred)) + geom_boxplot()
+```
+
+
+```{r, message=FALSE, warning=FALSE}
+library(pROC)
+
+roc_qda <- roc(test$severe_maleria, pred_qda)
+plot(roc_qda)
+```
+
+
+We can also create a nicer looking plot using `ggroc`:
+
+```{r}
+ggroc(list("QDA" = roc_qda)) +
+  theme(legend.title = element_blank()) +
+  geom_segment(aes(x = 1, xend = 0, y = 0, yend = 1), color = "black", linetype = "dashed") +
+  xlab("Specificity") +
+  ylab("Sensitivity") 
+```
+
+
+Here are the results for LDA
+
+```{r}
+pred_lda <- lda_preds$posterior[,2]
+roc_lda <- roc(test$severe_maleria, pred_lda)
+
+ggroc(list("QDA" = roc_qda, "LDA" = roc_lda)) +
+  theme(legend.title = element_blank()) +
+  geom_segment(aes(x = 1, xend = 0, y = 0, yend = 1), color = "black", linetype = "dashed") +
+  xlab("Specificity") +
+  ylab("Sensitivity") 
+```
+
+We can also compare to KNN with two different values of `k`: 5 and 51.
+
+```{r}
+fit1 <- knn3(factor(severe_maleria)~., data = train, k = 5)
+
+pred_knn <- predict(fit1, newdata = test)[,2]
+roc_knn <- roc(test$severe_maleria, pred_knn)
+
+
+fit2 <- knn3(factor(severe_maleria)~., data = train, k = 51)
+pred_knn2 <- predict(fit2, newdata = test)[,2]
+roc_knn2  <- roc(test$severe_maleria, pred_knn2)
+
+ggroc(list("QDA" = roc_qda, "LDA" = roc_lda, "kNN, k = 5" = roc_knn2, "kNN, k = 51" = roc_knn)) +
+  theme(legend.title = element_blank()) +
+  geom_segment(aes(x = 1, xend = 0, y = 0, yend = 1), color = "black", linetype = "dashed") +
+  xlab("Specificity") +
+  ylab("Sensitivity")
+```
+
+To summarize these curves into one single number that can be compared across methods, it is common to take the area under the ROC curve (abbreviated AUC or AUROC). Higher values indicate better performance.
+
+```{r}
+auc(roc_qda)
+auc(roc_lda)
+auc(roc_knn)
+auc(roc_knn2)
+```
+
+### Train a Neural Net model
+```{r}
+set.seed(123)
+nnModel <- train(factor(severe_maleria)~., 
+                 data=train, 
+                 method="nnet", 
+                 trControl=control)
+nnModel
+```
+
+### Neural Network Model
+```{r}
+nnModel$finalModel
+```
+
+```{r}
+nnpred=predict(nnModel,newdata = test)
+nn.cM<- confusionMatrix(nnpred,as.factor(test$severe_maleria), positive = 'Infected', mode='everything')
+nn.cM
+m5<- nn.cM$byClass[c(1, 2, 5, 7, 11)]
+m5
+```
+### plotting confusion matrix
+```{r}
+nn.cM$table
+fourfoldplot(nn.cM$table, col=rainbow(4), main="Imbalanced NN Confusion Matrix")
+plot(varImp(nnModel, scale=T))
+```
+
+# Train a Naive Bayes model
+```{r}
+set.seed(123)
+nbModel <- train(factor(severe_maleria)~., data=train, method="nb", trControl=control)
+nbModel
+```
+
+### Prediction
+```{r}
+nbpred=predict(nbModel,newdata = test)
+nb.cM<- confusionMatrix(nbpred,as.factor(test$severe_maleria), positive = 'Infected', mode='everything')
+nb.cM
+m6<- nb.cM$byClass[c(1, 2, 5, 7, 11)]
+m6
+```
+
+### plotting confusion matrix
+```{r}
+nb.cM$table
+fourfoldplot(nb.cM$table, col=rainbow(4), main="Imbalanced NB Confusion Matrix")
+plot(varImp(nbModel, scale=T))
+```
+
+### Train a Linear Discriminant Analysis model
+```{r}
+set.seed(123)
+ldaModel <- train(factor(severe_maleria)~., data=train, method="lda", trControl=control)
+ldaModel
+ldapred=predict(ldaModel,newdata = test)
+lda.cM<- confusionMatrix(ldapred,as.factor(test$severe_maleria), positive = 'Infected', mode='everything')
+m7<- lda.cM$byClass[c(1, 2, 5, 7, 11)]
+m7
+```
+
+### plotting confusion matrix
+```{r}
+lda.cM$table
+fourfoldplot(lda.cM$table, col=rainbow(4), main="Imbalanced LDA Confusion Matrix")
+plot(varImp(ldaModel, scale=T))
+```
+
+### Train a Linear Vector Quantization model
+```{r}
+set.seed(123)
+lvqModel <- train(factor(severe_maleria)~., data=train, method="lvq", trControl=control)
+lvqModel
+lvqpred=predict(lvqModel,newdata = test)
+lvq.cM<- confusionMatrix(lvqpred,as.factor(test$severe_maleria), positive = 'Infected', mode='everything')
+m7<- lvq.cM$byClass[c(1, 2, 5, 7, 11)]
+m7
+```
+
+### plotting confusion matrix
+```{r}
+lvq.cM$table
+fourfoldplot(lvq.cM$table, col=rainbow(4), main="Imbalanced LDA Confusion Matrix")
+plot(varImp(lvqModel, scale=T))
+```
+
+### Train a Bagging model
+```{r}
+set.seed(123)
+bagModel <- train(factor(severe_maleria)~., data=train, method="treebag", trControl=control)
+bagModel
+bagpred=predict(bagModel,newdata = test)
+bag.cM<- confusionMatrix(bagpred,as.factor(test$severe_maleria), positive = 'Infected', mode='everything')
+m8<- bag.cM$byClass[c(1, 2, 5, 7, 11)]
+m8
+```
+
+### plotting confusion matrix
+```{r}
+bag.cM$table
+fourfoldplot(bag.cM$table, col=rainbow(4), main="Imbalanced Bagging Confusion Matrix")
+plot(varImp(bagModel, scale=T))
+```
+
+### Train a Boosting model
+```{r}
+set.seed(123)
+boModel <- train(factor(severe_maleria)~., data=train, method="ada", trControl=control)
+boModel
+bopred=predict(boModel,newdata = test)
+bo.cM<- confusionMatrix(bopred,as.factor(test$severe_maleria), positive = 'Infected', mode='everything')
+m9<- bo.cM$byClass[c(1, 2, 5, 7, 11)]
+m9
+```
+
+```{r}
+bo.cM
+```
+
+### plotting confusion matrix
+```{r}
+bo.cM$table
+fourfoldplot(bo.cM$table, col=rainbow(4), main="Imbalanced Boosting Confusion Matrix")
+plot(varImp(boModel, scale=T))
+```
+
+## TABULATE YOUR RESULTS
+
+```{r}
+measure <-round(data.frame(SVM= m1, RF= m2, LR = m3, KNN=m4, NN=m5, NB=m6, Bagging = m8, Boosting = m9), 3)
+dim(measure)
+rownames(measure)=c('Sensitivity', 'Specificity', 'Precision','F1-Score', 'Balanced Accuracy')
+flextable(measure)
+measure
+View(measure)
+#xtable(measure.score, digits = 3)
+```
+
+### collect all resamples and compare
+```{r}
+results <- resamples(list(SVM=SvmModel, Bagging=bagModel,LR=lrModel,NB=nbModel, RF=RFModel))
+```
+
+### summarize the distributions of the results 
+```{r}
+summary(results)
+```
+
+### boxplots of results
+```{r}
+bwplot(results)
+```
+
+### dot plots of results
+```{r}
+dotplot(results)
+```
+
+### Oversampling 
+# Oversampled data --------------------------------------------------------
+```{r}
+ over <- ovun.sample(factor(severe_maleria)~., data = train, method = "over")$data
+ over
+```
+
+```{r}
+library(xtable)
+xtable(table(over$class))
+```
+ 
+## Model building ----------------------------------------------------------
+### prepare training scheme for cross-validation
+```{r} 
+control <- trainControl(method="repeatedcv", number=10, repeats=5)
+```
+ 
+## train an SVM model
+```{r}
+ set.seed(123)
+ over.svmModel <- train(factor(severe_maleria)~., data=over, method="svmRadial", trControl=control)
+ over.svmModel
+ over.svmpred=predict(over.svmModel,newdata = test)
+ over.SVM.cM<- confusionMatrix(over.svmpred,as.factor(test$severe_maleria), positive = 'Infected', mode='everything')
+ over.SVM.cM
+ over.m1<- over.SVM.cM$byClass[c(1, 2, 5, 7, 11)]
+ over.m1
+```
+
+###plotting confusion matrix
+```{r, fig.height=5, fig.width=7}
+ over.SVM.cM$table
+ fourfoldplot(over.SVM.cM$table, col=rainbow(4), main="Oversampled SVM Confusion Matrix")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
